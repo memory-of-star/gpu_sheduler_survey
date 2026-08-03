@@ -1,0 +1,50 @@
+[
+  {
+    "pair": "DeltaNet intra-chunk -> inter-chunk scan",
+    "producer": "deltanet_intra_chunk",
+    "producer_ctas": 512,
+    "consumer": "deltanet_inter_chunk_scan",
+    "consumer_ctas": 512,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 1,
+      "degree_max": 2,
+      "degree_mean": 1.99609375,
+      "interval_width_mean": 1.99609375,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 511,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 1.0019569471624266
+      },
+      "sampled_consumers": 256
+    }
+  },
+  {
+    "pair": "rmsnorm -> gate/up GEMM",
+    "producer": "rmsnorm",
+    "producer_ctas": 4096,
+    "consumer": "gate_up_gemm(BM=128,BN=128)",
+    "consumer_ctas": 4352,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 128,
+      "degree_max": 128,
+      "degree_mean": 128.0,
+      "interval_width_mean": 128.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 32768,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 0.015625
+      },
+      "sampled_consumers": 256
+    }
+  }
+]

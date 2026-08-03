@@ -1,0 +1,35 @@
+=== CTA-level dependency oracle: deepseek-v3.2-dsa ===
+tokens=4096 seq=32768
+
+Derived analytically from the tile decomposition — no GPU, no instrumentation.
+
+--- DSA indexer -> topk
+    producer: lightning_indexer                    131072 CTAs   512x256 score tiles
+    consumer: topk_select(k=2048)                     512 CTAs   one CTA per query block
+    (stats sampled over 256 of 512 consumer CTAs)
+    degree      : min=256 max=256 mean=256.0
+    interval    : mean width=256.0  tightness=1.0000  contiguous=100.0%
+    false edges : 0.00%
+    encoding    : exact adjacency 65536 entries  vs  interval 512 entries (0.008x)
+    >> HIGH DEGREE (256) but EXACT interval encoding.
+       BlockMaestro's 'degree > 32 => no benefit' would wrongly exclude this.
+
+--- DSA topk -> sparse attention
+    producer: topk_select(k=2048)                     512 CTAs   one CTA per query block
+    consumer: sparse_mla_attention                    512 CTAs   indirect KV gather, but KV is NOT produced by topk
+    (stats sampled over 256 of 512 consumer CTAs)
+    degree      : min=1 max=1 mean=1.0
+    interval    : mean width=1.0  tightness=1.0000  contiguous=100.0%
+    false edges : 0.00%
+    encoding    : exact adjacency 256 entries  vs  interval 512 entries (2.000x)
+
+==========================================================================
+Interpretation
+==========================================================================
+tightness ~= 1.0  -> interval encoding [lo,hi] is EXACT; O(1) storage suffices
+tightness << 1.0  -> interval wait pulls in false parents; needs mask/adjacency
+high degree + tightness 1.0 -> the case E1 says must be measured SEPARATELY from
+                               structural complexity, because the two are
+                               conflated in BlockMaestro's n-group injection.
+
+wrote /workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/results_budget1h_corrected/oracle_deepseek_32k.json

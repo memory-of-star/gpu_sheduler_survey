@@ -250,6 +250,17 @@ int main(int argc, char** argv) {
     cudaStream_t s; CUDA_CHECK(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking));
     cudaEvent_t e0, e1; CUDA_CHECK(cudaEventCreate(&e0)); CUDA_CHECK(cudaEventCreate(&e1));
 
+    // Dynamic shared-memory launches above CUDA's default 48-KB ceiling require
+    // an explicit opt-in.  Do this before the occupancy query as well as launch,
+    // otherwise a valid 64-KB B200/B300 configuration is reported as 0 CTAs/SM.
+    if (cfg.smem_kb > 0) {
+        int requested = (int)smemBytes({cfg.smem_kb, cfg.threads});
+        CUDA_CHECK(cudaFuncSetAttribute(producerK, cudaFuncAttributeMaxDynamicSharedMemorySize,
+                                        requested));
+        CUDA_CHECK(cudaFuncSetAttribute(consumerK, cudaFuncAttributeMaxDynamicSharedMemorySize,
+                                        requested));
+    }
+
     int occ = ctasPerSM(consumerK, {cfg.smem_kb, cfg.threads});
     printf("Occupancy: consumer CTAs resident per SM = %d (device has %d SMs => %d concurrent CTAs)\n\n",
            occ, dev.sms, occ * dev.sms);

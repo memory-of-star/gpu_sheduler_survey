@@ -1,0 +1,7 @@
+Device: NVIDIA B200 | SMs=148 | SM clock~1.97 GHz | CC 10.0
+
+=== 0.4 CLC try_cancel characteristics ===
+clusters         median(ms)       attempts      successes  cyc_per_attempt
+4096                 0.0090           4096           1728           1650.8
+  single-winner check: duplicate_claims=0 unclaimed=2368 (arbiter OK)
+SUMMARY tier0=clc status=ok clusters=4096 median_ms=0.00899 attempts=4096 successes=1728 success_rate=0.4219 cyc_per_attempt=1650.83 duplicate_claims=0 unclaimed=2368

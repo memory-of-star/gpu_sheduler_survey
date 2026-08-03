@@ -1,0 +1,9 @@
+Device: NVIDIA B200 | SMs=148 | SM clock~1.97 GHz | CC 10.0
+Pattern: structure=self degree=1 producers=64 consumers=64 | interval_tightness=1.000 effective_degree=1.0
+Config : threads=128 smem=64KB tail=10000 prologue=10000 repeats=3 pdl=1
+
+Occupancy: consumer CTAs resident per SM = 3 (device has 148 SMs => 444 concurrent CTAs)
+
+wait mode                  median(ms)      min(ms)    correct
+grid(griddepcontrol)           0.0149       0.0147       PASS
+SUMMARY tag=smem64_launch_smoke structure=self degree=1 eff_degree=1.00 tightness=1.0000 producers=64 consumers=64 threads=128 smem_kb=64 occ_per_sm=3 sms=148 tail=10000 prologue=10000 pdl=1 floor_ms=0.01494 ceiling_ms=0.00000 spin_ms=0.00000 backoff_ms=0.00000 counter_ms=0.00000 exact_ms=0.00000 space_pct=0.000

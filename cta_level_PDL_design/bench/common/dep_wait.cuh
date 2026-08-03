@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cuda/atomic>
+#include <cstring>
 #include "dep_pattern.cuh"
 
 enum WaitMode {
@@ -42,6 +43,8 @@ __host__ __device__ __forceinline__ const char* waitModeName(int m) {
 }
 
 __host__ inline int waitModeFromName(const char* s) {
+    if (std::strcmp(s, "none") == 0) return WAIT_NONE;
+    if (std::strcmp(s, "grid") == 0) return WAIT_GRID;
     for (int i = 0; i < WAIT_NMODES; ++i) {
         const char* n = waitModeName(i);
         const char* a = s; const char* b = n;

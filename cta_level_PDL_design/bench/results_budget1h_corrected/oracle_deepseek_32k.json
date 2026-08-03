@@ -1,0 +1,50 @@
+[
+  {
+    "pair": "DSA indexer -> topk",
+    "producer": "lightning_indexer",
+    "producer_ctas": 131072,
+    "consumer": "topk_select(k=2048)",
+    "consumer_ctas": 512,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 256,
+      "degree_max": 256,
+      "degree_mean": 256.0,
+      "interval_width_mean": 256.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 65536,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 0.0078125
+      },
+      "sampled_consumers": 256
+    }
+  },
+  {
+    "pair": "DSA topk -> sparse attention",
+    "producer": "topk_select(k=2048)",
+    "producer_ctas": 512,
+    "consumer": "sparse_mla_attention",
+    "consumer_ctas": 512,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 1,
+      "degree_max": 1,
+      "degree_mean": 1.0,
+      "interval_width_mean": 1.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 256,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 2.0
+      },
+      "sampled_consumers": 256
+    }
+  }
+]

@@ -1,0 +1,22 @@
+SUMMARY tier0=device name="NVIDIA B200" sms=148 cc=10.0 ghz=1.965
+SUMMARY tier0=chain stages=1 pdl_off_ms=1.02502 pdl_on_ms=1.02499 speedup=1.0000 implied_depth=1.000
+SUMMARY tier0=chain stages=2 pdl_off_ms=2.04701 pdl_on_ms=1.53702 speedup=1.3318 implied_depth=1.993
+SUMMARY tier0=chain stages=3 pdl_off_ms=3.06893 pdl_on_ms=2.04883 speedup=1.4979 implied_depth=2.983
+SUMMARY tier0=chain stages=4 pdl_off_ms=4.09168 pdl_on_ms=2.55904 speedup=1.5989 implied_depth=3.986
+SUMMARY tier0=chain stages=5 pdl_off_ms=5.11261 pdl_on_ms=3.06995 speedup=1.6654 implied_depth=4.977
+SUMMARY tier0=chain stages=6 pdl_off_ms=6.13386 pdl_on_ms=3.58077 speedup=1.7130 implied_depth=5.969
+SUMMARY tier0=occupancy smem_kb=0 threads=128 ctas_per_sm=16 concurrent_ctas=2368 median_ms=0.54886
+SUMMARY tier0=occupancy smem_kb=8 threads=128 ctas_per_sm=16 concurrent_ctas=2368 median_ms=0.54928
+SUMMARY tier0=occupancy smem_kb=16 threads=128 ctas_per_sm=13 concurrent_ctas=1924 median_ms=0.55002
+SUMMARY tier0=occupancy smem_kb=32 threads=128 ctas_per_sm=6 concurrent_ctas=888 median_ms=0.51754
+SUMMARY tier0=occupancy smem_kb=64 threads=128 ctas_per_sm=3 concurrent_ctas=444 median_ms=0.51722
+SUMMARY tier0=occupancy smem_kb=0 threads=256 ctas_per_sm=8 concurrent_ctas=1184 median_ms=0.54906
+SUMMARY tier0=occupancy smem_kb=8 threads=256 ctas_per_sm=8 concurrent_ctas=1184 median_ms=0.54874
+SUMMARY tier0=occupancy smem_kb=16 threads=256 ctas_per_sm=8 concurrent_ctas=1184 median_ms=0.54880
+SUMMARY tier0=occupancy smem_kb=32 threads=256 ctas_per_sm=6 concurrent_ctas=888 median_ms=0.54893
+SUMMARY tier0=occupancy smem_kb=64 threads=256 ctas_per_sm=3 concurrent_ctas=444 median_ms=0.51699
+SUMMARY tier0=fence scope=none median_ms=0.01869 ns_per_fence=0.000
+SUMMARY tier0=fence scope=sys median_ms=8.90672 ns_per_fence=4444.016
+SUMMARY tier0=fence scope=gpu median_ms=1.42877 ns_per_fence=705.040
+SUMMARY tier0=fence scope=cta median_ms=0.04957 ns_per_fence=15.440
+SUMMARY tier0=clc status=ok clusters=4096 median_ms=0.00899 attempts=4096 successes=1728 success_rate=0.4219 cyc_per_attempt=1650.83 duplicate_claims=0 unclaimed=2368

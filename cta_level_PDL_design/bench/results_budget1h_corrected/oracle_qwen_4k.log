@@ -1,0 +1,34 @@
+=== CTA-level dependency oracle: qwen3.6-27b ===
+tokens=4096 seq=4096
+
+Derived analytically from the tile decomposition — no GPU, no instrumentation.
+
+--- DeltaNet intra-chunk -> inter-chunk scan
+    producer: deltanet_intra_chunk                     64 CTAs   64 chunks of 64
+    consumer: deltanet_inter_chunk_scan                64 CTAs   sequential chunk recurrence
+    degree      : min=1 max=2 mean=2.0
+    interval    : mean width=2.0  tightness=1.0000  contiguous=100.0%
+    false edges : 0.00%
+    encoding    : exact adjacency 127 entries  vs  interval 128 entries (1.008x)
+
+--- rmsnorm -> gate/up GEMM
+    producer: rmsnorm                                4096 CTAs   1 CTA per token
+    consumer: gate_up_gemm(BM=128,BN=128)            4352 CTAs   32x136 tiles
+    (stats sampled over 256 of 4352 consumer CTAs)
+    degree      : min=128 max=128 mean=128.0
+    interval    : mean width=128.0  tightness=1.0000  contiguous=100.0%
+    false edges : 0.00%
+    encoding    : exact adjacency 32768 entries  vs  interval 512 entries (0.016x)
+    >> HIGH DEGREE (128) but EXACT interval encoding.
+       BlockMaestro's 'degree > 32 => no benefit' would wrongly exclude this.
+
+==========================================================================
+Interpretation
+==========================================================================
+tightness ~= 1.0  -> interval encoding [lo,hi] is EXACT; O(1) storage suffices
+tightness << 1.0  -> interval wait pulls in false parents; needs mask/adjacency
+high degree + tightness 1.0 -> the case E1 says must be measured SEPARATELY from
+                               structural complexity, because the two are
+                               conflated in BlockMaestro's n-group injection.
+
+wrote /workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/results_budget1h_corrected/oracle_qwen_4k.json

@@ -1,0 +1,8 @@
+CUDA error cta_dep_bench.cu:128: invalid argument
+Device: NVIDIA B200 | SMs=148 | SM clock~1.97 GHz | CC 10.0
+Pattern: structure=interval degree=8 producers=2048 consumers=2048 | interval_tightness=1.000 effective_degree=8.0
+Config : threads=128 smem=64KB tail=200000 prologue=200000 repeats=5 pdl=1
+
+Occupancy: consumer CTAs resident per SM = 0 (device has 148 SMs => 0 concurrent CTAs)
+
+wait mode                  median(ms)      min(ms)    correct

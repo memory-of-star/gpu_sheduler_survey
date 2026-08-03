@@ -1,0 +1,17 @@
+Device: NVIDIA B200 | SMs=148 | SM clock~1.97 GHz | CC 10.0
+Pattern: structure=interval degree=8 producers=1024 consumers=1024 | interval_tightness=1.000 effective_degree=8.0
+Config : threads=128 smem=0KB tail=200000 prologue=200000 repeats=5 pdl=1
+
+Occupancy: consumer CTAs resident per SM = 10 (device has 148 SMs => 1480 concurrent CTAs)
+
+wait mode                  median(ms)      min(ms)    correct
+none(ceiling)                  0.1140       0.1131        n/a
+grid(griddepcontrol)           0.1127       0.1127       PASS
+cta-spin                       0.1150       0.1144       PASS
+cta-backoff                    0.1147       0.1145       PASS
+cta-counter                    0.1131       0.1125       PASS
+cta-exact                      0.1174       0.1168       PASS
+
+BRACKET: floor(grid)=0.1127 ms  ceiling(none)=0.1140 ms  => total space=-1.1%
+         best software impl captured -2.1% of floor (= 0.0% of the available space)
+SUMMARY tag=t12_r1 structure=interval degree=8 eff_degree=8.00 tightness=1.0000 producers=1024 consumers=1024 threads=128 smem_kb=0 occ_per_sm=10 sms=148 tail=200000 prologue=200000 pdl=1 floor_ms=0.11270 ceiling_ms=0.11398 spin_ms=0.11504 backoff_ms=0.11472 counter_ms=0.11306 exact_ms=0.11738 space_pct=-1.136

@@ -4,7 +4,7 @@
 Consumes the per-CTA records written by primitive 1 and produces the four metrics the
 evaluation plan needs:
 
-  1. dependency stall distribution   -> BlockMaestro Fig.11 analogue
+  1. pre-dependency phase distribution (prologue + any dependency wait)
   2. CTA concurrency over time       -> BlockMaestro Fig.10 analogue
   3. producer/consumer SM affinity   -> how often a consumer lands on its parent's SM
   4. grid overlap ratio              -> how much the two kernels actually overlapped
@@ -63,10 +63,11 @@ def normalize(recs):
 
 
 def stall_stats(recs):
-    """Dependency stall = t_dep - t_launch, normalized to the CTA's own execution time.
+    """Time from CTA entry to the post-wait timestamp.
 
-    A value of 2.0 means the CTA waited twice as long as it spent executing -- the same
-    normalization BlockMaestro Fig.11 uses.
+    The trace schema has no timestamp between the independent prologue and dependency
+    wait, so this quantity is *not* an isolated dependency stall. Keep the historical
+    JSON field names for compatibility, but label the metric honestly in the report.
     """
     out = {}
     for kid in sorted({r["kernel_id"] for r in recs}):
@@ -101,32 +102,62 @@ def stall_stats(recs):
 
 
 def concurrency(recs, buckets=200):
-    """Sample how many CTAs are simultaneously resident, per kernel and in total.
+    """Compute exact peak/time-weighted mean CTA residency and a sampled plot series.
 
-    Uses a sweep over interval endpoints rather than fixed sampling so short CTAs are not
-    missed; the returned series is then resampled onto `buckets` even time slots.
+    Intervals are half-open [t_launch, t_end). Exact endpoint deltas avoid the previous
+    coarse-bin overcount, where CTAs ending and starting in the same bucket were counted
+    as simultaneously resident.
     """
     if not recs:
         return {}
     t_max = max(r["t_end"] for r in recs)
     if t_max <= 0:
         return {}
-    width = max(1, t_max // buckets)
+    sample_step = t_max / buckets
 
-    series = defaultdict(lambda: [0] * (buckets + 1))
-    for r in recs:
-        lo = min(r["t_launch"] // width, buckets)
-        hi = min(r["t_end"] // width, buckets)
-        for b in range(lo, hi + 1):
-            series[r["kernel_id"]][b] += 1
-            series["all"][b] += 1
+    groups = {"all": recs}
+    for kid in sorted({r["kernel_id"] for r in recs}):
+        groups[str(kid)] = [r for r in recs if r["kernel_id"] == kid]
+
+    peaks, means, series = {}, {}, {}
+    for key, group in groups.items():
+        deltas = defaultdict(int)
+        for r in group:
+            deltas[r["t_launch"]] += 1
+            deltas[r["t_end"]] -= 1
+        event_times = sorted(deltas)
+
+        active = 0
+        peak = 0
+        area = 0
+        previous = 0
+        for timestamp in event_times:
+            area += active * (timestamp - previous)
+            active += deltas[timestamp]
+            peak = max(peak, active)
+            previous = timestamp
+        peaks[key] = peak
+        means[key] = area / t_max
+
+        sampled = []
+        active = 0
+        event_index = 0
+        for bucket in range(buckets + 1):
+            timestamp = bucket * sample_step
+            while (event_index < len(event_times) and
+                   event_times[event_index] <= timestamp):
+                active += deltas[event_times[event_index]]
+                event_index += 1
+            sampled.append(active)
+        series[key] = sampled
 
     return {
-        "bucket_ns": width,
+        "method": "exact_half_open_endpoint_sweep",
+        "bucket_ns": sample_step,
         "buckets": buckets,
-        "peak": {str(k): max(v) for k, v in series.items()},
-        "mean": {str(k): statistics.fmean(v) for k, v in series.items()},
-        "series": {str(k): v for k, v in series.items()},
+        "peak": peaks,
+        "mean": means,
+        "series": series,
     }
 
 
@@ -186,6 +217,10 @@ def analyze(path):
         "tag": recs[0]["tag"],
         "n_records": len(recs),
         "span_ns": max(r["t_end"] for r in recs),
+        "pre_dependency_phase_note": (
+            "t_dep-t_launch includes the independent prologue and any wait; "
+            "it is not an isolated dependency-stall measurement"
+        ),
         "stalls": stall_stats(recs),
         "concurrency": concurrency(recs),
         "overlap": overlap(recs),
@@ -200,7 +235,7 @@ def report(a):
         return
     print(f"tag={a['tag']}  records={a['n_records']}  span={a['span_ns']/1e6:.3f} ms")
 
-    print("\n-- dependency stall (primitive 1 -> BlockMaestro Fig.11 analogue)")
+    print("\n-- pre-dependency phase (independent prologue + any wait; NOT pure stall)")
     for kid, s in a["stalls"].items():
         name = {0: "producer", 1: "consumer"}.get(kid, f"kernel{kid}")
         st = s["stall_ns"]
@@ -210,7 +245,7 @@ def report(a):
 
     c = a["concurrency"]
     if c:
-        print("\n-- CTA concurrency (BlockMaestro Fig.10 analogue)")
+        print("\n-- CTA concurrency (exact half-open endpoint sweep)")
         for k in sorted(c["peak"], key=lambda x: (x != "all", x)):
             print(f"  {k:9s} peak={c['peak'][k]:6d}  mean={c['mean'][k]:8.1f}")
 

@@ -1,0 +1,57 @@
+Device: NVIDIA B200 | SMs=148 | SM clock~1.97 GHz | CC 10.0
+SUMMARY tier0=device name="NVIDIA B200" sms=148 cc=10.0 ghz=1.965
+
+=== 0.1 same-stream chain overlap depth ===
+stages      pdl_off(ms)     pdl_on(ms)      speedup  implied_depth
+1                1.0250         1.0250        1.000           1.00
+SUMMARY tier0=chain stages=1 pdl_off_ms=1.02502 pdl_on_ms=1.02499 speedup=1.0000 implied_depth=1.000
+2                2.0470         1.5370        1.332           1.99
+SUMMARY tier0=chain stages=2 pdl_off_ms=2.04701 pdl_on_ms=1.53702 speedup=1.3318 implied_depth=1.993
+3                3.0689         2.0488        1.498           2.98
+SUMMARY tier0=chain stages=3 pdl_off_ms=3.06893 pdl_on_ms=2.04883 speedup=1.4979 implied_depth=2.983
+4                4.0917         2.5590        1.599           3.99
+SUMMARY tier0=chain stages=4 pdl_off_ms=4.09168 pdl_on_ms=2.55904 speedup=1.5989 implied_depth=3.986
+5                5.1126         3.0700        1.665           4.98
+SUMMARY tier0=chain stages=5 pdl_off_ms=5.11261 pdl_on_ms=3.06995 speedup=1.6654 implied_depth=4.977
+6                6.1339         3.5808        1.713           5.97
+SUMMARY tier0=chain stages=6 pdl_off_ms=6.13386 pdl_on_ms=3.58077 speedup=1.7130 implied_depth=5.969
+  [trace] tier0_chain_trace.csv (use tools/cta_timeline.py to see true overlap)
+
+=== 0.3 occupancy cost of a resident-but-waiting CTA ===
+This is the pricing basis for B2: how much does 'wait while holding a slot' cost,
+as a function of the resources the waiting CTA holds.
+
+smem_kb    threads       ctas_per_sm  concurrent_ctas     median(ms)
+0          128                    16             2368         0.5489
+SUMMARY tier0=occupancy smem_kb=0 threads=128 ctas_per_sm=16 concurrent_ctas=2368 median_ms=0.54886
+8          128                    16             2368         0.5493
+SUMMARY tier0=occupancy smem_kb=8 threads=128 ctas_per_sm=16 concurrent_ctas=2368 median_ms=0.54928
+16         128                    13             1924         0.5500
+SUMMARY tier0=occupancy smem_kb=16 threads=128 ctas_per_sm=13 concurrent_ctas=1924 median_ms=0.55002
+32         128                     6              888         0.5175
+SUMMARY tier0=occupancy smem_kb=32 threads=128 ctas_per_sm=6 concurrent_ctas=888 median_ms=0.51754
+64         128                     3              444         0.5172
+SUMMARY tier0=occupancy smem_kb=64 threads=128 ctas_per_sm=3 concurrent_ctas=444 median_ms=0.51722
+0          256                     8             1184         0.5491
+SUMMARY tier0=occupancy smem_kb=0 threads=256 ctas_per_sm=8 concurrent_ctas=1184 median_ms=0.54906
+8          256                     8             1184         0.5487
+SUMMARY tier0=occupancy smem_kb=8 threads=256 ctas_per_sm=8 concurrent_ctas=1184 median_ms=0.54874
+16         256                     8             1184         0.5488
+SUMMARY tier0=occupancy smem_kb=16 threads=256 ctas_per_sm=8 concurrent_ctas=1184 median_ms=0.54880
+32         256                     6              888         0.5489
+SUMMARY tier0=occupancy smem_kb=32 threads=256 ctas_per_sm=6 concurrent_ctas=888 median_ms=0.54893
+64         256                     3              444         0.5170
+SUMMARY tier0=occupancy smem_kb=64 threads=256 ctas_per_sm=3 concurrent_ctas=444 median_ms=0.51699
+
+=== 0.5 fence scope cost ===
+scope        median(ms)     ns_per_fence
+none             0.0187             0.00
+SUMMARY tier0=fence scope=none median_ms=0.01869 ns_per_fence=0.000
+sys              8.9067          4444.02
+SUMMARY tier0=fence scope=sys median_ms=8.90672 ns_per_fence=4444.016
+gpu              1.4288           705.04
+SUMMARY tier0=fence scope=gpu median_ms=1.42877 ns_per_fence=705.040
+cta              0.0496            15.44
+SUMMARY tier0=fence scope=cta median_ms=0.04957 ns_per_fence=15.440
+
+Done. Feed the SUMMARY lines to tools/parse_summary.py.

@@ -1,0 +1,25 @@
+CUDA error tier0_facts.cu:157: an illegal memory access was encountered
+Device: NVIDIA B200 | SMs=148 | SM clock~1.97 GHz | CC 10.0
+SUMMARY tier0=device name="NVIDIA B200" sms=148 cc=10.0 ghz=1.965
+
+=== 0.1 same-stream chain overlap depth ===
+stages      pdl_off(ms)     pdl_on(ms)      speedup  implied_depth
+1                1.0250         1.0250        1.000           1.00
+SUMMARY tier0=chain stages=1 pdl_off_ms=1.02499 pdl_on_ms=1.02502 speedup=1.0000 implied_depth=1.000
+2                2.0469         1.5369        1.332           1.99
+SUMMARY tier0=chain stages=2 pdl_off_ms=2.04694 pdl_on_ms=1.53693 speedup=1.3318 implied_depth=1.993
+3                3.0679         2.0480        1.498           2.98
+SUMMARY tier0=chain stages=3 pdl_off_ms=3.06790 pdl_on_ms=2.04797 speedup=1.4980 implied_depth=2.984
+4                4.0909         2.5589        1.599           3.98
+SUMMARY tier0=chain stages=4 pdl_off_ms=4.09088 pdl_on_ms=2.55894 speedup=1.5987 implied_depth=3.983
+5                5.1139         3.0710        1.665           4.97
+SUMMARY tier0=chain stages=5 pdl_off_ms=5.11386 pdl_on_ms=3.07098 speedup=1.6652 implied_depth=4.974
+6                6.1337         3.5799        1.713           5.98
+SUMMARY tier0=chain stages=6 pdl_off_ms=6.13373 pdl_on_ms=3.57990 speedup=1.7134 implied_depth=5.978
+  [trace] tier0_chain_trace.csv (use tools/cta_timeline.py to see true overlap)
+
+=== 0.3 occupancy cost of a resident-but-waiting CTA ===
+This is the pricing basis for B2: how much does 'wait while holding a slot' cost,
+as a function of the resources the waiting CTA holds.
+
+smem_kb    threads       ctas_per_sm  concurrent_ctas     median(ms)

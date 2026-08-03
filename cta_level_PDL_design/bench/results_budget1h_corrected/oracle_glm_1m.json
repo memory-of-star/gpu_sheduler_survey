@@ -1,0 +1,146 @@
+[
+  {
+    "pair": "DSA indexer -> topk",
+    "producer": "lightning_indexer",
+    "producer_ctas": 134217728,
+    "consumer": "topk_select(k=2048)",
+    "consumer_ctas": 16384,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 8192,
+      "degree_max": 8192,
+      "degree_mean": 8192.0,
+      "interval_width_mean": 8192.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 2097152,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 0.000244140625
+      },
+      "sampled_consumers": 256
+    }
+  },
+  {
+    "pair": "DSA topk -> sparse attention",
+    "producer": "topk_select(k=2048)",
+    "producer_ctas": 16384,
+    "consumer": "sparse_mla_attention",
+    "consumer_ctas": 16384,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 1,
+      "degree_max": 1,
+      "degree_mean": 1.0,
+      "interval_width_mean": 1.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 256,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 2.0
+      },
+      "sampled_consumers": 256
+    }
+  },
+  {
+    "pair": "IndexShare topk -> attn(L0) [span=1]",
+    "producer": "topk_select(shared)",
+    "producer_ctas": 16384,
+    "consumer": "sparse_attn_L0",
+    "consumer_ctas": 16384,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 1,
+      "degree_max": 1,
+      "degree_mean": 1.0,
+      "interval_width_mean": 1.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 256,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 2.0
+      },
+      "sampled_consumers": 256
+    }
+  },
+  {
+    "pair": "IndexShare topk -> attn(L1) [span=2]",
+    "producer": "topk_select(shared)",
+    "producer_ctas": 16384,
+    "consumer": "sparse_attn_L1",
+    "consumer_ctas": 16384,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 1,
+      "degree_max": 1,
+      "degree_mean": 1.0,
+      "interval_width_mean": 1.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 256,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 2.0
+      },
+      "sampled_consumers": 256
+    }
+  },
+  {
+    "pair": "IndexShare topk -> attn(L2) [span=3]",
+    "producer": "topk_select(shared)",
+    "producer_ctas": 16384,
+    "consumer": "sparse_attn_L2",
+    "consumer_ctas": 16384,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 1,
+      "degree_max": 1,
+      "degree_mean": 1.0,
+      "interval_width_mean": 1.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 256,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 2.0
+      },
+      "sampled_consumers": 256
+    }
+  },
+  {
+    "pair": "IndexShare topk -> attn(L3) [span=4]",
+    "producer": "topk_select(shared)",
+    "producer_ctas": 16384,
+    "consumer": "sparse_attn_L3",
+    "consumer_ctas": 16384,
+    "sampled": true,
+    "stats": {
+      "consumers_with_deps": 256,
+      "degree_min": 1,
+      "degree_max": 1,
+      "degree_mean": 1.0,
+      "interval_width_mean": 1.0,
+      "interval_tightness_mean": 1.0,
+      "false_edge_rate": 0.0,
+      "contiguous_pct": 100.0,
+      "encoding": {
+        "exact_adjacency_entries": 256,
+        "interval_entries": 512,
+        "storage_ratio_interval_vs_exact": 2.0
+      },
+      "sampled_consumers": 256
+    }
+  }
+]

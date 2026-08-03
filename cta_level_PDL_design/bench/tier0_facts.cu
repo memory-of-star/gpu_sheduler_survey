@@ -111,10 +111,12 @@ static void chainOverlap(const DeviceInfo& dev, int repeats) {
 // A CTA that simply occupies its slot for `wait` cycles, holding `smem` shared memory.
 // Models a consumer CTA that is resident but blocked on a dependency.
 extern __shared__ char g_smem[];
-__global__ void waiterK(float* __restrict__ sink, unsigned long long wait) {
-    if (threadIdx.x == 0) g_smem[0] = (char)blockIdx.x;   // touch smem so it is not elided
+__global__ void waiterK(float* __restrict__ sink, unsigned long long wait, int touch_smem) {
+    if (threadIdx.x == 0 && touch_smem)
+        g_smem[0] = (char)blockIdx.x;   // touch smem so it is not elided
     spin_cycles(wait);
-    if (threadIdx.x == 0) sink[blockIdx.x] = (float)g_smem[0];
+    if (threadIdx.x == 0)
+        sink[blockIdx.x] = touch_smem ? (float)g_smem[0] : (float)blockIdx.x;
 }
 
 static void occupancyCost(const DeviceInfo& dev, int repeats) {
@@ -134,6 +136,12 @@ static void occupancyCost(const DeviceInfo& dev, int repeats) {
     cudaStream_t s; CUDA_CHECK(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking));
     cudaEvent_t e0, e1; CUDA_CHECK(cudaEventCreate(&e0)); CUDA_CHECK(cudaEventCreate(&e1));
 
+    // CUDA defaults to a 48-KB dynamic-shared-memory launch ceiling.  The 64-KB
+    // point is legal on B200/B300 but must be explicitly opted in before both
+    // occupancy calculation and launch.
+    CUDA_CHECK(cudaFuncSetAttribute(waiterK, cudaFuncAttributeMaxDynamicSharedMemorySize,
+                                    64 * 1024));
+
     for (int ti = 0; ti < 2; ++ti) {
         for (int si = 0; si < 5; ++si) {
             int threads = threadSet[ti];
@@ -151,7 +159,7 @@ static void occupancyCost(const DeviceInfo& dev, int repeats) {
             std::vector<float> v;
             for (int r = 0; r < repeats + 3; ++r) {
                 CUDA_CHECK(cudaEventRecord(e0, s));
-                waiterK<<<blocks, threads, smem, s>>>(d_sink, wait);
+                waiterK<<<blocks, threads, smem, s>>>(d_sink, wait, smem > 0 ? 1 : 0);
                 CUDA_CHECK(cudaGetLastError());
                 CUDA_CHECK(cudaEventRecord(e1, s));
                 CUDA_CHECK(cudaEventSynchronize(e1));

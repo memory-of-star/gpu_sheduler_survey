@@ -29,6 +29,7 @@ build() {
 
 FAILED=0
 build cta_dep_bench.cu cta_dep_bench || FAILED=1
+build cta_dep_pilot.cu cta_dep_pilot || FAILED=1
 build tier0_facts.cu   tier0_facts   || FAILED=1
 
 # CLC uses sm_100+ PTX; if the chosen arch predates Blackwell the inline asm will not

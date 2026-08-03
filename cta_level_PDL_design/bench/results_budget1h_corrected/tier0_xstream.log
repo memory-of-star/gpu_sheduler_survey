@@ -1,0 +1,44 @@
+==================== detailed run (tail=prologue=20e6 cyc) ====================
+Device: NVIDIA B200  | SMs=148  | SM clock~1.97 GHz  | CC 10.0
+Config: blocks=148 threads=128 (n=18944) | tail=20000000 cyc (~10.18 ms) | prologue=20000000 cyc (~10.18 ms) | repeats=50
+
+mode                                median(ms)     min(ms)   vs BASE  correct
+BASE(xstream,ordinary-event)            20.383      20.380     1.00x  PASS
+PDL_XS(xstream,prog-event,eager)        20.384      20.379     1.00x  PASS
+PDL_CAPTURE(sA/sB captured->graph)      10.193      10.192     2.00x  PASS
+PDL_GRAPH(prog-edge,built)              10.193      10.191     2.00x  PASS
+PDL_SS(same-stream,serialize)           10.196      10.193     2.00x  PASS
+CONC(no-dep,ceiling)                    10.197      10.194     2.00x  n/a
+
+SUMMARY tail=20000000 prologue=20000000 blocks=148 threads=128 | BASE=20.383 PDL_XS=20.384 PDL_CAPTURE=10.193 PDL_GRAPH=10.193 PDL_SS=10.196 CONC=10.197 ms | speedup_xs=1.00 speedup_capture=2.00 speedup_graph=2.00 speedup_ss=2.00
+VERDICT: eager cross-stream (PDL_XS)=1.00x | SAME two streams captured into a graph (PDL_CAPTURE)=2.00x | built graph (PDL_GRAPH)=2.00x | same-stream (PDL_SS)=2.00x | ceiling ~2.00x.
+
+==================== sweep: tail = prologue (cycles) =====================
+cycles            BASE    PDL_XS  PDL_GRPH    PDL_SS      CONC   graph_spd
+1000000          1.033     1.033     0.516     0.518     0.520       2.00x
+2000000          2.049     2.050     1.026     1.029     1.029       2.00x
+5000000          5.107     5.107     2.553     2.557     2.558       2.00x
+10000000        10.199    10.199     5.101     5.104     5.104       2.00x
+20000000        20.383    20.384    10.195    10.197    10.198       2.00x
+40000000        40.752    40.753    20.382    20.384    20.385       2.00x
+80000000        81.497    81.496    40.756    40.760    40.762       2.00x
+
+Interpretation:
+ - PDL_SS (same-stream) is the reference: it should hit ~2x (== CONC ceiling).
+ - PDL_GRAPH tests cross-NODE PDL via a graph programmatic edge (built directly).
+ - PDL_CAPTURE captures the SAME literal sA/sB two-stream code into a graph via
+   cudaStreamBeginCapture; expected to match PDL_GRAPH (proving capture is what unlocks it).
+ - PDL_XS is eager cross-stream via a programmatic event; on some drivers this does NOT
+   overlap (behaves like BASE) because programmatic events are meant to be captured into a graph.
+
+==================== diamond: PDL edges vs ordinary edges =====================
+Device: NVIDIA B200  | SMs=148  | SM clock~1.97 GHz  | CC 10.0
+Diamond: producer -> {midA, midB} -> final  | blocks=148 threads=128 (n=18944)
+         tail=prologue=20000000 cyc (~10.18 ms each) | repeats=50
+
+variant                             median(ms)     min(ms)  correct
+DIAMOND_PLAIN(ordinary edges)           40.754      40.748  PASS
+DIAMOND_PDL(programmatic edges)         20.386      20.382  PASS
+
+SUMMARY tail=20000000 prologue=20000000 blocks=148 threads=128 | PLAIN=40.754 PDL=20.386 ms | pdl_speedup=2.00
+VERDICT: on the diamond, PDL edges HELP (2.00x vs ordinary edges).

@@ -1,0 +1,86 @@
+[13:26:08] === Tier 0: base facts ===
+[13:26:08] run  tier0_facts
+[13:26:10] FAIL: tier0_facts (see results_budget1h/tier0_facts.log)
+[13:26:10] run  tier0_clc
+[13:26:11] ok   tier0_clc
+[13:26:11] NOTE: Tier 0.2 (PDL eager cross-stream behaviour) = re-run
+[13:26:11]       ../../跨stream_PDL调研/bench/pdl_bench on this device and diff against the H100 result
+[13:26:11] === Tier 1.1a: degree sweep, structure PINNED to interval ===
+[13:26:11] run  t11a_g256_d1
+[13:26:12] ok   t11a_g256_d1
+[13:26:12] run  t11a_g256_d8
+[13:26:13] ok   t11a_g256_d8
+[13:26:13] run  t11a_g256_d64
+[13:26:14] ok   t11a_g256_d64
+[13:26:14] run  t11a_g1024_d1
+[13:26:14] ok   t11a_g1024_d1
+[13:26:14] run  t11a_g1024_d8
+[13:26:15] ok   t11a_g1024_d8
+[13:26:15] run  t11a_g1024_d64
+[13:26:16] ok   t11a_g1024_d64
+[13:26:16] === Tier 1.1b: structure sweep, degree PINNED to 32 ===
+[13:26:16] run  t11b_g256_interval
+[13:26:17] ok   t11b_g256_interval
+[13:26:17] run  t11b_g256_grouped
+[13:26:18] ok   t11b_g256_grouped
+[13:26:18] run  t11b_g1024_interval
+[13:26:19] ok   t11b_g1024_interval
+[13:26:19] run  t11b_g1024_grouped
+[13:26:20] ok   t11b_g1024_grouped
+[13:26:20] === Tier 1.2: tail/prologue ratio sweep ===
+[13:26:20] run  t12_r1
+[13:26:21] ok   t12_r1
+[13:26:21] run  t12_r2
+[13:26:22] ok   t12_r2
+[13:26:22] run  t12_r4
+[13:26:22] ok   t12_r4
+[13:26:22] run  t12_r8
+[13:26:23] ok   t12_r8
+[13:26:23] run  t12_r16
+[13:26:24] ok   t12_r16
+[13:26:24] === Tier 2.1: sync protocol shootout (1-to-1, isolates protocol cost) ===
+[13:26:24] run  t21_g256
+[13:26:26] ok   t21_g256
+[13:26:26] run  t21_g1024
+[13:26:27] ok   t21_g1024
+[13:26:27] run  t21_g4096
+[13:26:28] ok   t21_g4096
+[13:26:28] === Tier 2.3: encoding cost -- interval over-approximation vs exact parent set ===
+[13:26:28] run  t23_interval_d4
+[13:26:28] ok   t23_interval_d4
+[13:26:28] run  t23_interval_d16
+[13:26:29] ok   t23_interval_d16
+[13:26:29] run  t23_interval_d64
+[13:26:30] ok   t23_interval_d64
+[13:26:30] run  t23_strided_d4
+[13:26:31] ok   t23_strided_d4
+[13:26:31] run  t23_strided_d16
+[13:26:32] ok   t23_strided_d16
+[13:26:32] run  t23_strided_d64
+[13:26:33] ok   t23_strided_d64
+[13:26:33] run  t23_random_d4
+[13:26:34] ok   t23_random_d4
+[13:26:34] run  t23_random_d16
+[13:26:35] ok   t23_random_d16
+[13:26:35] run  t23_random_d64
+[13:26:36] ok   t23_random_d64
+[13:26:36] === Tier 0.3 extension: occupancy cost under a REAL dependency wait ===
+[13:26:36] run  t03_smem0
+[13:26:37] ok   t03_smem0
+[13:26:37] run  t03_smem8
+[13:26:38] ok   t03_smem8
+[13:26:38] run  t03_smem16
+[13:26:39] ok   t03_smem16
+[13:26:39] run  t03_smem32
+[13:26:40] ok   t03_smem32
+[13:26:40] run  t03_smem64
+[13:26:41] FAIL: t03_smem64 (see results_budget1h/t03_smem64.log)
+[13:26:41] === per-CTA timeline traces (primitive 1) for the headline configs ===
+[13:26:41] run  trace_interval
+[13:26:41] ok   trace_interval
+[13:26:41] run  trace_random
+[13:26:42] ok   trace_random
+[13:26:42] === campaign finished ===
+[13:26:42] SUMMARY lines: results_budget1h/summary.txt (34 rows)
+[13:26:42] FAILURES occurred:
+[13:26:42] Copy results_budget1h/ back to the dev box and run tools/analyze.py

@@ -1,0 +1,10 @@
+[13:31:39] === Tier 0: base facts ===
+[13:31:39] run  tier0_facts
+[13:31:41] ok   tier0_facts
+[13:31:41] run  tier0_clc
+[13:31:42] ok   tier0_clc
+[13:31:42] NOTE: Tier 0.2 (PDL eager cross-stream behaviour) = re-run
+[13:31:42]       ../../跨stream_PDL调研/bench/pdl_bench on this device and diff against the H100 result
+[13:31:42] === campaign finished ===
+[13:31:42] SUMMARY lines: results_budget1h_corrected/summary.txt (22 rows)
+[13:31:42] Copy results_budget1h_corrected/ back to the dev box and run tools/analyze.py
