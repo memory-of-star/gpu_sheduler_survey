@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # Drive NVRTC via ctypes to compile a .cu to PTX and print it.
-import ctypes, sys, glob
+import ctypes, sys, glob, os
 
 def find_libnvrtc():
-    hits = glob.glob("/home/yiqi/.local/lib/python3*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so*")
+    pattern = "~/.local/lib/python3*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so*"
+    hits = glob.glob(os.path.expanduser(pattern))
     hits = [h for h in hits if not h.endswith("alt.so") and "builtins" not in h]
     if not hits:
         sys.exit("libnvrtc not found")

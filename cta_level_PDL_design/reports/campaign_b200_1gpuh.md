@@ -72,7 +72,7 @@ Pilot 内 CUDA event 计时总和只有 `3.917 s`；上表还包含进程启动�
 
 ## 4. 为什么原 Tier 1/2 结果被拒绝
 
-原始 FAST 数据保存在 [`bench/results_budget1h/`](bench/results_budget1h/)，但不应进入性能结论。它显示 Tier 1 大多在 `-1%..+0.3%` 附近，这不是“CTA PDL 没收益”，而是实验退化造成的协议噪声。
+原始 FAST 数据保存在 [`bench/results_budget1h/`](../bench/results_budget1h/)，但不应进入性能结论。它显示 Tier 1 大多在 `-1%..+0.3%` 附近，这不是“CTA PDL 没收益”，而是实验退化造成的协议噪声。
 
 阻塞性问题包括：
 
@@ -87,12 +87,12 @@ Pilot 内 CUDA event 计时总和只有 `3.917 s`；上表还包含进程启动�
 
 本轮修正：
 
-- [`bench/tier0_facts.cu`](bench/tier0_facts.cu)：zero-smem 不再访问动态 shared memory；64 KiB 显式 opt-in。
-- [`bench/cta_dep_bench.cu`](bench/cta_dep_bench.cu)：为 64 KiB producer/consumer occupancy query 与 launch 增加 opt-in。原 benchmark 的 trigger 语义未被当作已修复；其性能数据仍弃用。
-- [`bench/common/dep_wait.cuh`](bench/common/dep_wait.cuh)：修正帮助文本已公开、但 parser 原先不接受的 `--wait grid` / `--wait none` 短别名。
-- 新增 [`bench/cta_dep_pilot.cu`](bench/cta_dep_pilot.cu)：独立、受限、可验证的 corrected pilot。
-- 新增 [`tools/analyze_pilot.py`](tools/analyze_pilot.py)：逐样本中位数、seed 汇总和 deterministic bootstrap。
-- 修正 [`tools/cta_timeline.py`](tools/cta_timeline.py)：并发度改为半开区间的精确端点扫描；`t_dep-t_launch` 正确标为“prologue + 可能的 wait”，不再冒充纯 dependency stall。
+- [`bench/tier0_facts.cu`](../bench/tier0_facts.cu)：zero-smem 不再访问动态 shared memory；64 KiB 显式 opt-in。
+- [`bench/cta_dep_bench.cu`](../bench/cta_dep_bench.cu)：为 64 KiB producer/consumer occupancy query 与 launch 增加 opt-in。原 benchmark 的 trigger 语义未被当作已修复；其性能数据仍弃用。
+- [`bench/common/dep_wait.cuh`](../bench/common/dep_wait.cuh)：修正帮助文本已公开、但 parser 原先不接受的 `--wait grid` / `--wait none` 短别名。
+- 新增 [`bench/cta_dep_pilot.cu`](../bench/cta_dep_pilot.cu)：独立、受限、可验证的 corrected pilot。
+- 新增 [`tools/analyze_pilot.py`](../tools/analyze_pilot.py)：逐样本中位数、seed 汇总和 deterministic bootstrap。
+- 修正 [`tools/cta_timeline.py`](../tools/cta_timeline.py)：并发度改为半开区间的精确端点扫描；`t_dep-t_launch` 正确标为“prologue + 可能的 wait”，不再冒充纯 dependency stall。
 
 ## 5. 校正 pilot 的实验语义
 
@@ -277,18 +277,18 @@ RUNBOOK 的门槛是：多数配置收益空间 ≥8% 时继续 Tier 2/3 + LLM +
 
 ## 11. 数据与复现入口
 
-- corrected 原始结果：[`bench/results_budget1h_corrected/`](bench/results_budget1h_corrected/)
-- Pilot 原始 3,720 samples：[`pilot_matrix.log`](bench/results_budget1h_corrected/pilot_matrix.log)
-- 逐配置统计和 CI：[`pilot_summary.csv`](bench/results_budget1h_corrected/pilot_summary.csv)、[`pilot_analysis.json`](bench/results_budget1h_corrected/pilot_analysis.json)
-- Tier 0：[`tier0_facts.log`](bench/results_budget1h_corrected/tier0_facts.log)、[`tier0_clc.log`](bench/results_budget1h_corrected/tier0_clc.log)
-- 跨流/graph：[`tier0_xstream.log`](bench/results_budget1h_corrected/tier0_xstream.log)
-- CTA trace：[`tier0_chain_trace.csv`](bench/results_budget1h_corrected/tier0_chain_trace.csv)、[`tier0_chain_timeline.json`](bench/results_budget1h_corrected/tier0_chain_timeline.json)
-- 最终 64 KiB launch smoke（occupancy=3 CTA/SM、correctness PASS）：[`smem64_launch_smoke.log`](bench/results_budget1h_corrected/smem64_launch_smoke.log)
+- corrected 原始结果：[`bench/results_budget1h_corrected/`](../bench/results_budget1h_corrected/)
+- Pilot 原始 3,720 samples：[`pilot_matrix.log`](../bench/results_budget1h_corrected/pilot_matrix.log)
+- 逐配置统计和 CI：[`pilot_summary.csv`](../bench/results_budget1h_corrected/pilot_summary.csv)、[`pilot_analysis.json`](../bench/results_budget1h_corrected/pilot_analysis.json)
+- Tier 0：[`tier0_facts.log`](../bench/results_budget1h_corrected/tier0_facts.log)、[`tier0_clc.log`](../bench/results_budget1h_corrected/tier0_clc.log)
+- 跨流/graph：[`tier0_xstream.log`](../bench/results_budget1h_corrected/tier0_xstream.log)
+- CTA trace：[`tier0_chain_trace.csv`](../bench/results_budget1h_corrected/tier0_chain_trace.csv)、[`tier0_chain_timeline.json`](../bench/results_budget1h_corrected/tier0_chain_timeline.json)
+- 最终 64 KiB launch smoke（occupancy=3 CTA/SM、correctness PASS）：[`smem64_launch_smoke.log`](../bench/results_budget1h_corrected/smem64_launch_smoke.log)
 - Oracle：同目录下 `oracle_*.json` / `oracle_*.log`
-- 被拒绝的原始 smoke：[`bench/results_budget1h/`](bench/results_budget1h/)
+- 被拒绝的原始 smoke：[`bench/results_budget1h/`](../bench/results_budget1h/)
 
-- SHA-256 数据/源码清单：[`EXPERIMENT_MANIFEST_SHA256.txt`](EXPERIMENT_MANIFEST_SHA256.txt)
-- 可搬运归档：[`cta_pdl_b200_budget1h_20260803.tar.gz`](cta_pdl_b200_budget1h_20260803.tar.gz)（旁有 `.sha256`）
+- SHA-256 数据/源码清单：[`EXPERIMENT_MANIFEST_SHA256.txt`](../EXPERIMENT_MANIFEST_SHA256.txt)
+- 可搬运归档：[`cta_pdl_b200_budget1h_20260803.tar.gz`](../cta_pdl_b200_budget1h_20260803.tar.gz)（旁有 `.sha256`）
 核心复现命令：
 
 ```bash

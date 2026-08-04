@@ -11,7 +11,7 @@
 //        -> feeds the "Ideal" point of the four-point bracket.
 //
 // 0.2 (PDL eager-cross-stream behaviour) is covered by re-running the existing
-// 跨stream_PDL调研/bench/pdl_bench on B300; 0.4 (CLC try_cancel) needs sm_100+ PTX and is
+// cross_stream_PDL_survey/bench/pdl_bench on B300; 0.4 (CLC try_cancel) needs sm_100+ PTX and is
 // split into clc_probe.cu.
 //
 // Build: ./build.sh   Run: ./tier0_facts [--repeats N]
@@ -233,7 +233,7 @@ int main(int argc, char** argv) {
     if (A.has("--help")) {
         printf("usage: tier0_facts [--repeats N]\n"
                "  Runs Tier 0 base-fact probes 0.1 / 0.3 / 0.5.\n"
-               "  0.2 = re-run 跨stream_PDL调研/bench/pdl_bench on this device.\n"
+               "  0.2 = re-run cross_stream_PDL_survey/bench/pdl_bench on this device.\n"
                "  0.4 = ./clc_probe (needs sm_100+).\n");
         return 0;
     }

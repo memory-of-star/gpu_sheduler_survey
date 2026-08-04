@@ -112,7 +112,7 @@ indexer(L1) → attn(L1) → attn(L2) → attn(L3) → attn(L4)
                 span=1     span=2     span=3     span=4
 ```
 
-**这是 A1 维度"跨度 > 1"的真实样本**，也是 `prologue_inspector` 设计的理想场景——该设计的硬约束是"结构数组不能由紧邻的生产者 kernel 写"（见 [`prologue_inspector_cta_pdl.md`](../design_brainstorm/prologue_inspector_cta_pdl.md) §9），而 IndexShare 让索引数组由**数个 kernel 之前**的算子产生，天然满足。
+**这是 A1 维度"跨度 > 1"的真实样本**，也是 `prologue_inspector` 设计的理想场景——该设计的硬约束是"结构数组不能由紧邻的生产者 kernel 写"（见 [`prologue_inspector_cta_pdl.md`](./prologue_inspector_cta_pdl.md) §9），而 IndexShare 让索引数组由**数个 kernel 之前**的算子产生，天然满足。
 
 对 span = 2/3/4 的层，`idx` 早已就绪，消费者 CTA 可以在 prologue 里安全地读它、算出自己依赖哪些 KV 区段。
 

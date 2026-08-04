@@ -158,7 +158,7 @@ TB 调度器中新增两个结构：
 
 ## 七、与 PDL / CLC 方向的关联
 
-这篇工作与本仓库中 `cta_level_PDL_design`、`跨stream_PDL调研` 的主题高度相关，可以作为学术侧的对照参考：
+这篇工作与本仓库中 `cta_level_PDL_design`、`cross_stream_PDL_survey` 的主题高度相关，可以作为学术侧的对照参考：
 
 - **相同的问题定义**：都在攻击"kernel 边界作为粗粒度 barrier 导致 launch 开销 + 依赖停顿"这个问题。NVIDIA 的 PDL（Programmatic Dependent Launch）本质上就是论文中的 *kernel pre-launching*——让后继 kernel 提前启动、在前驱 kernel 尾部之前完成 prologue，然后在 `cudaGridDependencySynchronize()` 处等待。
 - **BlockMaestro 更激进的地方**：PDL 的同步粒度仍然是 grid 级（`cudaGridDependencySynchronize` 是整 grid 等前驱整 grid），而 BlockMaestro 做的是 **TB 级（CTA 级）的点对点依赖解析**——正好对应 `cta_level_PDL_design` 想要达到的目标。论文给出的二分图表示、dependency list + parent counter 的硬件结构、以及六种依赖模式的编码压缩方案，是 CTA 级 PDL 设计可以直接借鉴的机制。

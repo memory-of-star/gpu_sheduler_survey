@@ -481,5 +481,5 @@ BlockMaestro 由调度器集中持有一张全局依赖图；本设计让每个�
 3. 多级依赖链（K1→K2→K3）下，K3 的 inspector 需要 K2 的写集合映射——
    K2 若是 gather-affine 形态则可得，需要验证链式传播是否稳定。
 4. 与 `cudaLaunchAttributeProgrammaticEvent`（跨 stream PDL）的组合行为，
-   参见 `../../跨stream_PDL调研/`。
+   参见 `../../cross_stream_PDL_survey/`。
 5. 变体 C 的反向登记表在什么规模下比轮询更划算。

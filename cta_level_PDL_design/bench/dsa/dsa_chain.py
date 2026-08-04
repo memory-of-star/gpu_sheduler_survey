@@ -85,7 +85,7 @@ def dsa_sparse_attn(torch, b, idx, args):
 
     NOTE the dependency structure this embodies: the gather target `kv_lat` was written by
     EARLIER decode steps, not by topk. The only inter-kernel RAW edge here is on `idx`,
-    which is 1-to-1 per query block. See docs/dsa_dependency_analysis.md §3.2.
+    which is 1-to-1 per query block. See archive/dsa_dependency_analysis.md §3.2.
     """
     sel = b["kv_lat"][idx]                                  # (S, k, kv_lora_rank)
     logits = torch.einsum("sd,skd->sk", b["q"], sel)

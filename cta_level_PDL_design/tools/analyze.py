@@ -43,6 +43,11 @@ def _coerce(v):
 # e.g. name="NVIDIA B300").
 _KV = __import__("re").compile(r'(\w+)=("(?:[^"\\]|\\.)*"|\S+)')
 
+# The record type must match exactly. cta_dep_pilot emits SUMMARY_PILOT lines with a
+# different schema; a bare startswith("SUMMARY") swallows those and reports a corrupted
+# bracket instead of failing, so the tag is delimited here.
+_SUMMARY = __import__("re").compile(r"SUMMARY\s")
+
 
 def parse_summary(path):
     """Parse every 'SUMMARY k=v ...' line into a dict, coercing numbers."""
@@ -50,7 +55,7 @@ def parse_summary(path):
     with open(path) as f:
         for line in f:
             line = line.strip()
-            if not line.startswith("SUMMARY"):
+            if not _SUMMARY.match(line):
                 continue
             d = {}
             for k, v in _KV.findall(line[len("SUMMARY"):]):

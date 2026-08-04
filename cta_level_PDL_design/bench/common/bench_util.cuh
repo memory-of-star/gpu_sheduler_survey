@@ -1,6 +1,6 @@
 // bench_util.cuh — shared host-side helpers for the CTA-PDL benchmarks.
 //
-// Conventions inherited from 跨stream_PDL调研/bench/pdl_bench:
+// Conventions inherited from cross_stream_PDL_survey/bench/pdl_bench:
 //   - CUDA_CHECK on every API call
 //   - every benchmark prints a single machine-parsable "SUMMARY key=value ..." line so the
 //     offline analysis scripts never have to parse prose

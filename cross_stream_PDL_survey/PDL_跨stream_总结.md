@@ -136,13 +136,13 @@ eager 模式下 `cudaStreamWaitEvent` 只能把它当作一个普通 event：等
 
 ## 7. 目录结构与材料索引
 
-本主题（`跨stream_PDL调研/`）聚焦**跨 stream / 跨 node 的 PDL 收益实测**。
+本主题（`cross_stream_PDL_survey/`）聚焦**跨 stream / 跨 node 的 PDL 收益实测**。
 PDL/CLC 接口、PTX 观察、以及 **Rubin CTA/tile-level triggering 的硬件设计**已拆到姊妹主题
 `../cta_level_PDL_design/`。
 
 ```
-scheduler/
-├── 跨stream_PDL调研/               # 【本主题】跨 stream PDL 收益实测
+gpu_sheduler_survey/
+├── cross_stream_PDL_survey/        # 【本主题】跨 stream PDL 收益实测
 │   ├── PDL_跨stream_总结.md        #   本文（阶段总结，入口）
 │   ├── bench/                      #   基准测试
 │   │   ├── pdl_bench/              #     源码：pdl_bench.cu(6模式) + pdl_diamond.cu + build.sh/run.sh/README.md

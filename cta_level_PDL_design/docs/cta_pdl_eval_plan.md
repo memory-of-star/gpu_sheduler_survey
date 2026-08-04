@@ -90,7 +90,7 @@ __device__ __forceinline__ unsigned int smid() {
 
 ### 原语 2：参数化微基准骨架
 
-在现有 [`pdl_bench.cu`](../../跨stream_PDL调研/bench/pdl_bench/pdl_bench.cu) 基础上扩展，可调：
+在现有 [`pdl_bench.cu`](../../cross_stream_PDL_survey/bench/pdl_bench/pdl_bench.cu) 基础上扩展，可调：
 
 | 参数 | 取值范围 | 用途 |
 |---|---|---|
@@ -325,7 +325,7 @@ sparse attention 读两类数据：
 indexer(L1) → attn(L1) → attn(L2) → attn(L3) → attn(L4)
 ```
 
-索引数组由**数个 kernel 之前**的算子产生，恰好满足 [`prologue_inspector_cta_pdl.md`](../design_brainstorm/prologue_inspector_cta_pdl.md) §9 的硬约束（"结构数组不能由紧邻的生产者 kernel 写"）。同时也是 A1 维度"跨度 > 1"的真实样本。
+索引数组由**数个 kernel 之前**的算子产生，恰好满足 [`prologue_inspector_cta_pdl.md`](../archive/prologue_inspector_cta_pdl.md) §9 的硬约束（"结构数组不能由紧邻的生产者 kernel 写"）。同时也是 A1 维度"跨度 > 1"的真实样本。
 
 #### (4) MoE 的 dispatch/combine 才是真正的困难场景
 
@@ -395,3 +395,28 @@ graph TD
 ```
 
 **Tier 1 的 1.1 是决策点**：若 `Ceiling − Floor` 在 B300 的参数区间内普遍很小，应停下来重新评估整个方向，而不是继续做 Tier 2/3。
+
+### 10.1 Gate 阈值（权威定义）
+
+判据是 Tier 1.1 在多数配置下的典型 `Ceiling − Floor`：
+
+| Tier 1 结果 | 下一步 |
+|---|---|
+| **≥ 8%** | 继续 Tier 2/3 + Tier 4 + Tier 5，跑满预算 |
+| **2 – 8%** | 跳过 Tier 2/3，直接做 Tier 4 端到端，确认真实负载上还剩多少 |
+| **< 2%** | **停**。只跑 Tier 4 三档确认，然后收工 |
+
+这三个数字在本节定义，[`../RUNBOOK.md`](../RUNBOOK.md) §3.3 的决策表是供上机时离线查阅的镜像。**要改阈值改这里**，并同步那份镜像。
+
+判读时必须带上证据边界：synthetic 微基准通过 gate 只说明「机制在所述限制下可行」，不等于真实负载上的收益。若产出该数字的实验没有覆盖 multi-wave（`P,C > SM`）与真实 occupancy，gate 通过也不足以支撑「跑满预算」。
+
+### 10.2 最小可交付
+
+若时间或预算被砍，按此优先级保底：
+
+1. **Tier 1.1 的依赖度 × grid 收益地图** —— 单个信息量最大的实验，决定整个方向是否成立
+2. **Tier 4 的 `Ceiling − PDL_grid`** —— 真实负载上还剩多少空间
+3. **Tier 0.1 的重叠层数** —— 决定 B3 维度哪些选项可达
+4. **Tier 0.3 的 occupancy 曲线** —— B2 维度定价
+
+前两项合计约 4 GPU-hours，足以支撑「这个方向值不值得做」的判断。
