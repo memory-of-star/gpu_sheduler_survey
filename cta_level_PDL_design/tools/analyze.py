@@ -335,7 +335,9 @@ def main():
         print(f"cannot read {args.summary}: {e}", file=sys.stderr)
         return 1
     if not rows:
-        print("no SUMMARY lines found", file=sys.stderr)
+        print(f"no SUMMARY lines found in {args.summary}. If this is a cta_dep_pilot log, "
+              "its SAMPLE/SUMMARY_PILOT schema is read by tools/analyze_pilot.py instead.",
+              file=sys.stderr)
         return 1
 
     print(f"parsed {len(rows)} SUMMARY rows from {args.summary}")

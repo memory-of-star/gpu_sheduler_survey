@@ -81,8 +81,24 @@ def main() -> None:
                 raise SystemExit(f"duplicate summary tag: {record['tag']}")
             summaries[record["tag"]] = record
 
+    # Fail before writing anything. An empty run would otherwise emit a JSON asserting
+    # "all_valid": true over zero configurations and then die on the CSV, leaving a file
+    # that claims everything passed when nothing ran.
+    if not summaries:
+        raise SystemExit(
+            f"{args.log}: no SUMMARY_PILOT records. Either no cta_dep_pilot step completed "
+            "(check failures.log), or this is a cta_dep_bench log -- that schema uses plain "
+            "SUMMARY lines and is read by tools/analyze.py instead."
+        )
+
     if set(samples) != set(summaries):
-        raise SystemExit("SAMPLE and SUMMARY_PILOT tag sets differ")
+        missing_samples = sorted(set(summaries) - set(samples))
+        missing_summary = sorted(set(samples) - set(summaries))
+        raise SystemExit(
+            "SAMPLE and SUMMARY_PILOT tag sets differ; a step probably died mid-run. "
+            f"summary without samples: {missing_samples or 'none'}; "
+            f"samples without summary: {missing_summary or 'none'}"
+        )
 
     rows = []
     detailed: dict[str, object] = {}
@@ -127,6 +143,8 @@ def main() -> None:
             "tightness": float(meta["tightness"]),
             "producers": int(meta["producers"]),
             "consumers": int(meta["consumers"]),
+            "sms": int(meta.get("sms", 0) or 0),
+            "wave": meta.get("wave", ""),
             "tail_cycles": int(meta["tail"]),
             "repeats": int(meta["repeats"]),
             "valid": int(meta["valid"]),

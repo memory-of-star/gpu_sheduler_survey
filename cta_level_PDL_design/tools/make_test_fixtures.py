@@ -2,13 +2,19 @@
 """Generate synthetic benchmark output so the analysis toolchain can be validated offline.
 
 Rent time is expensive and the analysis scripts must work on the FIRST try. This produces
-plausible SUMMARY lines and CTA trace CSVs with the shapes the real benchmarks emit, so
-analyze.py / cta_timeline.py / llm_bracket.py can be exercised end-to-end without a GPU.
+plausible SUMMARY lines, SAMPLE/SUMMARY_PILOT records and CTA trace CSVs with the shapes the
+real benchmarks emit, so the whole analysis chain can be exercised end-to-end without a GPU.
 
 The numbers are invented. Only the FORMAT is meaningful.
 
+Note the two schemas are not interchangeable: analyze.py reads the SUMMARY lines emitted by
+tier0_facts and the rejected cta_dep_bench, while analyze_pilot.py reads the SAMPLE /
+SUMMARY_PILOT records emitted by cta_dep_pilot, which is what decides the Tier 1 gate.
+
 Usage:
     python3 tools/make_test_fixtures.py --out /tmp/ctafix
+    python3 tools/analyze_pilot.py /tmp/ctafix/pilot_matrix.log \\
+            --json /tmp/ctafix/pilot_analysis.json --csv /tmp/ctafix/pilot_summary.csv
     python3 tools/analyze.py      /tmp/ctafix/summary.txt
     python3 tools/cta_timeline.py /tmp/ctafix/trace.csv
     python3 tools/llm_bracket.py  /tmp/ctafix/summary_llm.txt
@@ -107,6 +113,91 @@ def gen_trace(path, n_cta=512, sms=148, seed=7):
     return len(rows) - 1
 
 
+PILOT_MODES = ("none", "grid", "interval-spin", "interval-backoff", "exact-backoff")
+
+
+def gen_pilot(path, sms=148, repeats=5, seed=11):
+    """SAMPLE + SUMMARY_PILOT records in cta_dep_pilot's format.
+
+    Mirrors the tags run_all.sh tier1p produces, so analyze_pilot.py -- the script that
+    actually decides the Tier 1 gate -- can be exercised before any GPU is rented.
+    """
+    rnd = random.Random(seed)
+    L = []
+
+    def config(tag, struct, deg, grid, tight, space, captured, tail=0, wave="underfilled"):
+        floor = 1.0
+        base = {"grid": floor,
+                "none": floor * (1 - space / 100),
+                "interval-spin": floor * (1 - captured / 100) * 1.02,
+                "interval-backoff": floor * (1 - captured / 100),
+                "exact-backoff": floor * (1 - captured / 100) * 1.01}
+        per_mode = {}
+        for mode in PILOT_MODES:
+            vals = [base[mode] * (1 + rnd.uniform(-0.004, 0.004)) for _ in range(repeats)]
+            per_mode[mode] = vals
+            for rep, ms in enumerate(vals):
+                L.append(f"SAMPLE tag={tag} mode={mode} rep={rep} ms={ms:.6f}")
+
+        def med(m):
+            return sorted(per_mode[m])[repeats // 2]
+
+        f, c, i = med("grid"), med("none"), med("interval-backoff")
+        L.append(f"SUMMARY_PILOT semantics=2 tag={tag} structure={struct} degree={deg} "
+                 f"eff_degree={deg/tight:.2f} tightness={tight:.4f} producers={grid} "
+                 f"consumers={grid} threads=128 sms={sms} wave={wave} "
+                 f"producer_occ=16 consumer_occ=16 "
+                 f"trigger_floor=ready trigger_impl=entry trigger_ceiling=entry "
+                 f"ready=400000 tail={tail} prologue=200000 epilogue=1000000 skew_bins=8 "
+                 f"repeats={repeats} floor_ms={f:.6f} ceiling_ms={c:.6f} "
+                 f"interval_spin_ms={med('interval-spin'):.6f} "
+                 f"interval_backoff_ms={i:.6f} exact_backoff_ms={med('exact-backoff'):.6f} "
+                 f"impl=interval-backoff impl_ms={i:.6f} "
+                 f"space_pct={100*(f-c)/f:.4f} captured_pct={100*(f-i)/f:.4f} "
+                 f"of_space_pct={100*(f-i)/(f-c):.3f} valid=1")
+
+    def wave_name(grid: int) -> str:
+        if grid > sms:
+            return "multi"
+        if grid == sms:
+            return "single_full"
+        return "underfilled"
+
+    # Tier 1.1p degree axis, structure pinned. Include multi-wave grids (§5.3).
+    for g in (64, 148, 296, 1184, 4736):
+        for d in (1, 8, 32):
+            if d > g:
+                continue
+            # Keep fixture count modest: only d in {1,8} on the largest multi-wave points.
+            if g >= 1184 and d == 32:
+                continue
+            config(f"t11p_g{g}_d{d}", "interval", d, g, 1.0,
+                   space=max(4.0, 28.0 * (1 - d / 300)),
+                   captured=max(1.5, 9.9 * (1 - d / 300)),
+                   wave=wave_name(g))
+
+    # Tier 1.1p structure axis, degree pinned -> tightness drives the benefit.
+    for g in (64, 148, 296):
+        for s, tight in (("interval", 1.00), ("self", 1.00),
+                         ("grouped", 0.90), ("strided", 0.23)):
+            config(f"t11ps_g{g}_{s}", s, 32, g, tight, space=26.0 * tight,
+                   captured=9.9 * tight, wave=wave_name(g))
+
+    # Tier 1.2p tail/prologue ratio.
+    for r in (1, 2, 4, 8, 16):
+        config(f"t12p_r{r}", "interval", 8, 148, 1.0,
+               space=min(48.0, 9.0 * r), captured=min(36.0, 6.5 * r),
+               tail=200000 * r, wave="single_full")
+
+    # Two seeds of one config, so the across-seed aggregation path is exercised too.
+    for s in (202, 303):
+        config(f"t11p_g148_d8_s{s}", "interval", 8, 148, 1.0, space=27.0, captured=9.8,
+               wave="single_full")
+
+    open(path, "w").write("\n".join(L) + "\n")
+    return sum(1 for line in L if line.startswith("SUMMARY_PILOT"))
+
+
 def gen_llm(path):
     L = []
     # Headroom shrinks as batch grows: BS=1 has the smallest grids and the most slack.
@@ -140,11 +231,15 @@ def main():
     s = os.path.join(args.out, "summary.txt")
     t = os.path.join(args.out, "trace.csv")
     m = os.path.join(args.out, "summary_llm.txt")
+    p = os.path.join(args.out, "pilot_matrix.log")
 
     print(f"summary.txt      {gen_summary(s):5d} SUMMARY rows  -> {s}")
     print(f"trace.csv        {gen_trace(t):5d} CTA records   -> {t}")
     print(f"summary_llm.txt  {gen_llm(m):5d} SUMMARY rows  -> {m}")
+    print(f"pilot_matrix.log {gen_pilot(p):5d} pilot configs -> {p}")
     print("\nValidate the toolchain with:")
+    print(f"  python3 tools/analyze_pilot.py {p} \\")
+    print(f"          --json {args.out}/pilot_analysis.json --csv {args.out}/pilot_summary.csv")
     print(f"  python3 tools/analyze.py      {s}")
     print(f"  python3 tools/cta_timeline.py {t}")
     print(f"  python3 tools/llm_bracket.py  {m}")
