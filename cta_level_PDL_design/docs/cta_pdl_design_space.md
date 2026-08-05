@@ -8,7 +8,7 @@
 > - [`cuda_13.4_pdl_clc_interfaces.md`](./cuda_13.4_pdl_clc_interfaces.md) —— 现有 PDL/CLC 接口是什么、硬件如何反推（**现状**）
 > - 本文 —— 若要做 CTA 级，有哪些设计选项（**设计空间**）
 > - [`../archive/prologue_inspector_cta_pdl.md`](../archive/prologue_inspector_cta_pdl.md) —— 该空间中的**一个**已探索坐标（已归档，不是本文的推荐项）
-> - [`../docs/cta_pdl_eval_plan.md`](./cta_pdl_eval_plan.md) —— 如何在 B300 真机上评估这些选项
+> - [`../EXPERIMENT_PLAN.md`](../EXPERIMENT_PLAN.md) —— 如何在真机上评估这些选项（**实验规格**，驱动脚本以它为准）
 > - [`../papers/README.md`](../papers/README.md) —— 43 篇参考文献按维度索引
 
 ---
@@ -187,7 +187,7 @@ BlockMaestro 的评估里 GAUSSIAN 有 510 次 kernel 调用、NW 有 255 次、
 
 **PAVER 的技术手段与 BlockMaestro 高度重合**（同为 UCR 组）：同样是 JIT 期从 PTX 提取 TB 的 load 地址范围，只是用于 **locality** 而非 dependency。这意味着同一套分析基础设施可同时服务 A2 与 C1 两个维度。
 
-**一个具体的算法改进点**（来自 DSA 分析，见 [`cta_pdl_eval_plan.md`](./cta_pdl_eval_plan.md) Tier 5）：BlockMaestro 的判据是"地址是否来源于 global load"，但更准确的判据应是**该数据是否由本步的前驱 kernel 产生**。DSA 的 `sparse_attn` 读 `KV[idx[i]]` 属于间接访存，但被读的 KV 是**更早的 decode step 写入的**，与紧邻前驱无 RAW 关系；真正的依赖只有对 `idx` 的那条，且按 query 块是 1-to-1。**按数据的产生时间而非仅按地址来源判定**，可以把这类场景从"保守全连接"救回"规整 1-to-1"。
+**一个具体的算法改进点**（来自 DSA 分析，见 [`../EXPERIMENT_PLAN.md`](../EXPERIMENT_PLAN.md) §9.2）：BlockMaestro 的判据是"地址是否来源于 global load"，但更准确的判据应是**该数据是否由本步的前驱 kernel 产生**。DSA 的 `sparse_attn` 读 `KV[idx[i]]` 属于间接访存，但被读的 KV 是**更早的 decode step 写入的**，与紧邻前驱无 RAW 关系；真正的依赖只有对 `idx` 的那条，且按 query 块是 1-to-1。**按数据的产生时间而非仅按地址来源判定**，可以把这类场景从"保守全连接"救回"规整 1-to-1"。
 
 ---
 
@@ -704,7 +704,7 @@ CTA 级下这条约束有两个走法，是 C2 的核心分岔：
 
 ## 附录 A：与评估方案的对应
 
-每个维度的可测性判定见 [`cta_pdl_eval_plan.md`](./cta_pdl_eval_plan.md)。概要：
+每个维度的可测性判定见 [`../EXPERIMENT_PLAN.md`](../EXPERIMENT_PLAN.md) §11。概要：
 
 | 类别                                              | 维度                                                                    |
 | ------------------------------------------------- | ----------------------------------------------------------------------- |

@@ -265,7 +265,7 @@ Oracle 从 tile decomposition 解析依赖，不使用 GPU。大 grid 最多抽�
 
 ## 10. Gate 判定与下一步
 
-RUNBOOK 的门槛是：多数配置收益空间 ≥8% 时继续 Tier 2/3 + LLM + DSA；2–8% 只做 LLM；<2% 停止。当前 synthetic pilot 的 Space 都 >26%，tail=0 的正确 Impl gain 仍约 9.95%，所以**机制可行性 gate 通过**。但当前矩阵不是原计划的 multi-wave/resource-realistic Tier 1 全空间，不能据此直接“跑满预算”。
+`EXPERIMENT_PLAN.md` §6 的门槛是：多数配置收益空间 ≥8% 时继续 Tier 2/3 + LLM + DSA；2–8% 只做 LLM；<2% 停止。当前 synthetic pilot 的 Space 都 >26%，tail=0 的正确 Impl gain 仍约 9.95%，所以**机制可行性 gate 通过**。但当前矩阵不是原计划的 multi-wave/resource-realistic Tier 1 全空间，不能据此直接“跑满预算”。
 
 建议只做三个高信息量实验：
 
@@ -287,8 +287,8 @@ RUNBOOK 的门槛是：多数配置收益空间 ≥8% 时继续 Tier 2/3 + LLM +
 - Oracle：同目录下 `oracle_*.json` / `oracle_*.log`
 - 被拒绝的原始 smoke：[`bench/results_budget1h/`](../bench/results_budget1h/)
 
-- SHA-256 数据/源码清单：[`EXPERIMENT_MANIFEST_SHA256.txt`](../EXPERIMENT_MANIFEST_SHA256.txt)
-- 可搬运归档：[`cta_pdl_b200_budget1h_20260803.tar.gz`](../cta_pdl_b200_budget1h_20260803.tar.gz)（旁有 `.sha256`）
+- SHA-256 数据/源码清单：`EXPERIMENT_MANIFEST_SHA256.txt`——**未随仓库保留**，2026-08-05 核实子树内不存在，故此处不给链接
+- 可搬运归档：`cta_pdl_b200_budget1h_20260803.tar.gz`（旁有 `.sha256`）——同上，未保留
 核心复现命令：
 
 ```bash

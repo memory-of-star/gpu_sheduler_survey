@@ -45,45 +45,94 @@ them, and do not duplicate conclusions.
 | File | Authoritative for | Rule |
 |---|---|---|
 | `docs/cta_pdl_design_space.md` | The dimensions (A1–E1) and the options under each | **Deliberately neutral — enumerates trade-offs, gives no recommendation.** Do not write conclusions or benchmark results into it. Every option carries both an implementation tag (`[S]`/`[H-]`/`[H+]`) and a hardware-status tag (`[B300:有/部分/无]`); new options must carry both. |
-| `docs/cta_pdl_eval_plan.md` | Methodology: the four-point bracket, tiers, GPU budget, gate thresholds (§10.1), minimum deliverable (§10.2) | Change only with a stated reason; downstream reports cite it. `RUNBOOK.md` §3.3/§7 mirror §10.1/§10.2 so they are readable on the rented box, where `docs/` is not shipped — change the numbers here and update the mirror in the same edit. |
+| `EXPERIMENT_PLAN.md` (subtree root) | **The specification of the experiments**: four-point bracket (§1), admissibility conditions every harness must satisfy (§3), what each experiment measures and how to read it, gate thresholds (§6), budget and minimum deliverable (§12), harness requirements (§13) | **The plan leads, the scripts follow — when they disagree, the script is what changes.** Never narrow the plan to match what the code can currently do; an unimplemented experiment belongs in §13, not deleted. Change only with a stated reason; downstream reports cite it. §6 is implemented by `tools/gate.py` — change the thresholds in both in the same edit. Implementation progress belongs in `bench/README.md`, execution progress in `EXPERIMENT_REPORT_INDEX.md`; **do not record either here**. |
 | `docs/cuda_13.4_pdl_clc_interfaces.md` | What today's ISA/runtime actually provides | Facts about existing interfaces only. |
 | `rubin_design.md` (subtree root) | **Rubin's design description** — the public statement about its thread-block/tile-level triggering | Verbatim quoted source, and the project's only Rubin material. Do not paraphrase into it or extend it with inference; cite it for every Rubin claim. |
 | `papers/README.md` | The reference corpus, indexed by dimension | Add new refs with the dimension they inform. |
 | `reports/**/*.md` | Results and conclusions | The only place conclusions live. Grouped by tier — see §7. |
-| `EXPERIMENT_REPORT_INDEX.md` | The experiment ledger, at the subtree root | The join table between dimensions and evidence: per dimension, what evidence exists, its grade, and the remaining gap. Must be updated in the same change as any new/changed report. |
-| `RUNBOOK.md` | Rented-GPU session procedure | Optimised for "no debugging on the clock". |
+| `EXPERIMENT_REPORT_INDEX.md` | **Execution progress against `EXPERIMENT_PLAN.md`** | Where the campaign stands, what is blocked, how to resume, and links to credible reports. Authoritative for progress / next action — not for experiment specs (plan) or conclusions (reports). Must be updated in the same change as any new/changed report: refresh §0 status, §2 plan checklist, and §4 report list. |
+| `run_session.sh` (subtree root) | The rented-GPU session, as executable code | The session procedure is a script, not a document, so it cannot drift from what actually runs. Change the procedure by changing it. |
 | `bench/README.md` | Benchmark code contract | Implementation detail of the primitives. |
+| `codex/README.md` | **How an agent drives a session** — which stages are script and which are agent | The procedure itself is `codex/run_campaign.sh`; this file only explains the split. It records no results and no progress. |
 
 `archive/` holds side-branch and superseded material, kept only for reference. It is **not
 authoritative**: do not cite it as a current source, as a design recommendation, or as evidence.
 Existing links into it may stay, but new work should not build on it without first promoting the
 content back out of `archive/` deliberately.
 
-## 3. Machine model — this is a hard constraint
+## 3. Machine model — establish which machine you are on before anything else
 
-**The dev box is macOS with no GPU and no CUDA toolchain** (`nvcc` and `nvidia-smi` are absent).
-All GPU data is produced in a *separate* rented single-GPU session (so far: one B200, 148 SM,
-CC 10.0) and copied back.
+This repo is worked on from two places, and the rules differ. **Detect, do not assume:**
 
-Consequences that agents must respect:
+```bash
+command -v nvidia-smi >/dev/null && echo "GPU BOX" || echo "DEV BOX"
+```
+
+### On the DEV BOX (macOS, no GPU, no `nvcc`)
 
 - **Never present a GPU number that is not traceable to a file under `bench/results*/`.**
   Anything else is `NOT EXECUTED` and must be labelled as such.
-- CUDA sources can be written and reviewed locally but **cannot be compile-checked**. Treat any
-  `.cu` edit as unverified until it builds on the rented machine; say so.
-- Do not conflate devices. The design-space doc reasons about B300 (sm_103); the executed
-  experiments so far are **B200 (sm_100)**. Reports must name the device they actually ran on.
-- What *is* fully doable locally: docs, report writing from existing logs, offline dependency
-  analysis, and the whole `tools/` chain (verified working under Python 3.14).
+- CUDA sources can be written and reviewed but **cannot be compile-checked**. Treat any `.cu`
+  edit as unverified until it builds on the GPU box; say so.
+- Fully doable here: docs, report writing from existing logs, offline dependency analysis,
+  and the whole `tools/` chain (verified under Python 3.14).
+
+### On the GPU BOX (the rented single-GPU machine)
+
+The whole repo is cloned here and an agent runs the session unattended. Here you *may*
+compile, run and measure — that is the point — but:
+
+- **Run `./run_session.sh` rather than hand-assembling phases.** It is resumable and
+  fail-soft, so re-running after a crash or a dropped connection is always safe and never
+  repeats completed work.
+- **Record the device you actually ran on** (`bench/<results>/device.txt`). The design-space
+  doc reasons about B300 (sm_103); executed experiments so far are **B200 (sm_100)**. Reports
+  must name the real device, never the aspirational one.
+- Everything in §4 still binds. Being able to run a benchmark does not make its output
+  admissible; the rejected harness still produces inadmissible numbers here.
+
+### The autonomous session, end to end
+
+```bash
+git clone <repo> && cd <repo>/cta_level_PDL_design
+./run_session.sh          # ~3 GPU-hours, unattended: preflight, smoke, Tier 0, Tier 1p, gate
+```
+
+It stops at the **decision point** on purpose. Tier 4/5 need a 54 GB model download and vLLM,
+which is the flakiest part of any session and is not worth booking before the gate says the
+direction is alive. What it leaves for the agent to read:
+
+| Artefact | What it is |
+|---|---|
+| `bench/<results>/gate.json` | the verdict: `GO` / `LLM_ONLY` / `STOP` / `INVALID`, with the medians behind it |
+| `bench/<results>/pilot_summary.csv` | per-configuration statistics with bootstrap CIs |
+| `bench/<results>/pilot_matrix.log` | raw `SAMPLE` / `SUMMARY_PILOT` records |
+| `bench/<results>/session.log` | the whole run, timestamped from session start |
+| `bench/<results>/failures.log` | steps that failed; the session continues past them |
+
+The gate thresholds live in `EXPERIMENT_PLAN.md` §6 and are implemented by `tools/gate.py`.
+**Do not re-derive the verdict by eye** — if you disagree with it, the disagreement is with §6
+and belongs there, not in a report.
+
+`INVALID` (exit 2) means a configuration failed correctness validation. When that happens no
+timing from the run is usable, and the report says so instead of quoting numbers.
 
 ```bash
 # Offline analysis chain (no GPU needed) — always validate on fixtures first
 python3 tools/make_test_fixtures.py --out /tmp/ctafix
+python3 tools/analyze_pilot.py /tmp/ctafix/pilot_matrix.log \
+        --json /tmp/ctafix/pilot_analysis.json --csv /tmp/ctafix/pilot_summary.csv
+python3 tools/gate.py          /tmp/ctafix/pilot_analysis.json
 python3 tools/analyze.py       /tmp/ctafix/summary.txt
 python3 tools/cta_timeline.py  /tmp/ctafix/trace.csv
 python3 tools/llm_bracket.py   /tmp/ctafix/summary_llm.txt
 python3 tools/dep_oracle.py --help      # pure-CPU dependency oracle
 ```
+
+The two summary schemas are not interchangeable: `analyze.py` reads `SUMMARY` lines
+(`tier0_facts`, and the rejected `cta_dep_bench`), `analyze_pilot.py` reads
+`SAMPLE`/`SUMMARY_PILOT` (`cta_dep_pilot`, the Tier 1 gate). Each now refuses the other's
+input with a message naming the right script rather than emitting a plausible-looking result.
 
 ## 4. Benchmark validity rules — non-negotiable
 
@@ -125,7 +174,7 @@ State these four things first; if (c) is empty, do not run it.
 
 - **(a) Dimension and rows.** Which of A1–E1, and which specific option rows it discriminates.
 - **(b) Bracket points produced.** Which of Floor / Impl / Ceiling / Ideal, per
-  `docs/cta_pdl_eval_plan.md` §1. `[H-]`/`[H+]` options get Floor/Ceiling/Ideal only — an
+  `EXPERIMENT_PLAN.md` §1. `[H-]`/`[H+]` options get Floor/Ceiling/Ideal only — an
   interval estimate is the intended output, not a precise value.
 - **(c) The decision it changes.** Which design choice or gate flips depending on the outcome.
 - **(d) GPU budget** in minutes, against the ~8 GPU-hour total.
@@ -137,8 +186,8 @@ negligible.
 ## 6. Priority and gates
 
 Execution order, gate thresholds and minimum deliverable are all owned by
-`docs/cta_pdl_eval_plan.md` §10 (§10.1 thresholds, §10.2 minimum deliverable); `RUNBOOK.md`
-§3.3/§7 carry a mirror for use on the rented box:
+`EXPERIMENT_PLAN.md` (§6 thresholds, §12 budget and minimum deliverable), and §6 is executed
+by `tools/gate.py`:
 
 - Tier 0 (base facts) → Tier 1 (benefit map, **decision point**) → Tier 2/3 (mechanism
   comparison) and Tier 4 (LLM end-to-end) → Tier 5 (DSA chain).
@@ -147,18 +196,17 @@ Execution order, gate thresholds and minimum deliverable are all owned by
 - Minimum deliverable, in priority order: Tier 1.1 degree × grid map; Tier 4
   `Ceiling − PDL_grid`; Tier 0.1 achievable overlap depth; Tier 0.3 occupancy curve.
 
-**Current top gaps (snapshot 2026-08-04 — update when this changes).** Valid evidence today is
-Tier 0.1/0.2/0.3/0.4/0.5, the corrected producer–consumer pilot, the CPU dependency oracle, and
-the 13.3-vs-13.4 PTX diff. The two decisive things still missing are (1) **Tier 1.1 in the
-`P,C > SM` multi-wave regime with the corrected harness** — the pilot only covers the
-underfilled `P,C ≤ 148` case, so no grid-size or degree boundary has actually been measured; and
-(2) **Tier 4's `Ceiling − PDL_grid`** on a real model. Do not let mechanism-level work (Tier 2/3)
-jump ahead of these two.
+**Current top gaps.** Live progress and resume instructions live in
+`EXPERIMENT_REPORT_INDEX.md` §0–§2 — update that file when gaps change, not this paragraph.
+Snapshot 2026-08-05: multi-wave harness/`tier1p` grids are ready on disk but **unmeasured**;
+the two decisive missing pieces are (1) **Tier 1.1 multi-wave numbers on GPU**, and
+(2) **Tier 4's `Ceiling − PDL_grid`**. Do not let mechanism-level work (Tier 2/3) jump ahead.
 
 ## 7. Report conventions
 
-**Location.** Reports live under `reports/`, grouped by the tier that produced them. The index
-stays at the subtree root as the single entry point.
+**Location.** Reports live under `reports/`, grouped by the tier that produced them.
+`EXPERIMENT_REPORT_INDEX.md` at the subtree root is the execution-progress entry point
+(plan section → status → resume commands → report links).
 
 ```
 reports/campaign_<device>_<budget>.md   umbrella report for one rented session
@@ -189,8 +237,8 @@ text `bench/tier0_facts.cu` and the href `../../bench/tier0_facts.cu`.
 
 Additional rules:
 
-- Update `EXPERIMENT_REPORT_INDEX.md` in the same change — all three of its §1 coverage matrix,
-  §2 report list, and §4 "explicitly not executed" list.
+- Update `EXPERIMENT_REPORT_INDEX.md` in the same change — its §0 current status, §2 plan-section
+  checklist, and §4 report list (so the next session can resume from the file alone).
 - **Never delete a rejected experiment.** It gets a report under `reports/rejected/` as an audit
   record, listing what may still be reused and what must not be reused as a conclusion.
 - Provenance artefacts of a past session (`EXPERIMENT_MANIFEST_SHA256.txt`,
@@ -202,8 +250,29 @@ Additional rules:
 
 ## 8. Build and run
 
+On the GPU box, prefer the whole session; drop to individual phases only when debugging one.
+
 ```bash
-cd bench
+./run_session.sh                # the whole session, unattended (see §3)
+FAST=1 ./run_session.sh         # same path end to end, minutes instead of hours
+STEP_TIMEOUT=1800 ./run_session.sh   # bound each benchmark step; see below
+```
+
+To run the session *and* the reporting around it, use the Codex workflow, which wraps
+`run_session.sh` with the agent stages that declare coordinates beforehand and write the
+reports afterwards (`codex/README.md`):
+
+```bash
+./codex/run_campaign.sh         # audit -> smoke -> measure -> report -> branch -> tier4 -> wrapup
+```
+
+`STEP_TIMEOUT` (seconds, default `0` = off) bounds one benchmark invocation. Fail-soft
+assumes a step terminates, and multi-wave software waits have no forward-progress guarantee:
+a resident consumer CTA can spin on a producer CTA from a wave the scheduler has not placed
+yet. Bounding the step turns that from a stalled rented machine into a recorded failure.
+
+```bash
+cd bench                        # individual phases, for debugging
 ./build.sh                      # default ARCH=sm_103 (B300); ARCH=sm_90 for H100
 FAST=1 ./run_all.sh             # smoke, minutes — must print "campaign finished" with empty failures.log
 ./run_all.sh tier0              # phases: tier0 | tier1p | tier1 | tier23 | all
@@ -211,12 +280,12 @@ FAST=1 ./run_all.sh             # smoke, minutes — must print "campaign finish
 ```
 
 **Harness status — a phase name here is a correctness claim.** `tier1p` drives `cta_dep_pilot`,
-the corrected harness, and is the only admissible source of Tier 1 gate data; it is capped at
-`P,C <= SM` by the pilot itself, so it covers the single-wave regime only. `tier1` and `tier23`
-drive `cta_dep_bench`, whose trigger semantics are rejected (§4) — they are retained for
-re-audit, print a warning, and are excluded from `all`. Their timings must never reach a
-conclusion. Consequently the project's top gap, the multi-wave map, is **producible by neither
-binary today**: lifting the pilot's cap is a semantic change to the `.cu`, not a flag.
+the corrected harness, and is the only admissible source of Tier 1 gate data. It accepts
+`P,C > SM` (multi-wave, plan §5.3) with per-CTA publish-after-ready. CUDA sources edited on the
+DEV BOX are unverified until they build on the GPU box. `tier1` and `tier23` drive
+`cta_dep_bench`, whose trigger semantics are rejected (§4) — they are retained for re-audit,
+print a warning, and are excluded from `all`. Their timings must never reach a conclusion.
+The remaining gap is the **measured** multi-wave map on rented hardware, not the harness gate.
 
 Driver contract, required for the rented-machine model: unattended, resumable via
 `results/<step>.done`, fail-soft (a failing step is recorded and the campaign continues), and
@@ -240,9 +309,16 @@ asking first.
 
 - **Link hygiene.** Every relative markdown link under this subtree currently resolves. After any
   move or rename, re-verify — a silently broken cross-reference is how the report set loses its
-  traceability. The two `bench/results*/campaign.log` files and `EXPERIMENT_MANIFEST_SHA256.txt`
-  still contain pre-rename sibling paths (`跨stream_PDL调研/...`) **by design**: they are raw
-  session evidence, not documentation.
+  traceability. The two `bench/results*/campaign.log` files still contain pre-rename sibling
+  paths (`跨stream_PDL调研/...`) **by design**: they are raw session evidence, not
+  documentation. `codex/check_docs.py` enforces this check; run it after any move or rename.
+- **The 2026-08-03 session's provenance artefacts were never kept in the tree.**
+  `EXPERIMENT_MANIFEST_SHA256.txt`, `EXPERIMENT_TRACKED_CHANGES.patch`,
+  `EXPERIMENT_GIT_STATUS.txt` and `cta_pdl_b200_budget1h_20260803.tar.gz` are named in the
+  index and in two reports but are not present; as of 2026-08-05 those references are plain
+  text rather than links, and say so. If the originals turn up, restore them next to
+  `EXPERIMENT_REPORT_INDEX.md` and the links can come back. Later sessions should keep
+  theirs — `collect.sh` produces the tarball.
 - `cross_stream_PDL_survey/PDL_跨stream_总结.md` §7 contains a repo tree diagram whose
   `cta_level_PDL_design/` half is outdated (it predates `bench/`, `tools/`, and `reports/`), and
   it does not list the `CLC_feature_survey/` sibling. That file belongs to the sibling topic, so

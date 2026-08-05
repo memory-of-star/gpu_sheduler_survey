@@ -649,6 +649,6 @@ dependent grid 要等所有 producer CTA trigger 后才有资格启动，因此 
 - 统计分析脚本：[tools/analyze_pilot.py](../../tools/analyze_pilot.py)
 - B200 完整实验总报告：[reports/campaign_b200_1gpuh.md](../campaign_b200_1gpuh.md)
 - 被弃用的原 FAST 汇总：[bench/results_budget1h/summary.txt](../../bench/results_budget1h/summary.txt)
-- 数据与源码 SHA-256 清单：[EXPERIMENT_MANIFEST_SHA256.txt](../../EXPERIMENT_MANIFEST_SHA256.txt)
+- 数据与源码 SHA-256 清单：`EXPERIMENT_MANIFEST_SHA256.txt`——**未随仓库保留**，2026-08-05 核实子树内不存在，故此处不给链接
 
 本报告只重新组织和解释已有实验，不重新运行 GPU、不修改原始数据，也不改变任何 CUDA 源码。
