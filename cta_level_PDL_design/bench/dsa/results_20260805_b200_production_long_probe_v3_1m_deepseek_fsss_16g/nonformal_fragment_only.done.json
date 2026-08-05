@@ -1,0 +1,15 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "campaign_contract_sha256": "5add35e82fd6991e7aea084876307ff626be14f6e24524f6c84cdf4f8d72118e",
+  "campaign_fingerprint_sha256": "31b6a4e0e4f4e1b60b5e5a47248c9a7b2d716f9494b87ad5aea8ebe55026c13a",
+  "campaign_mode": "nonformal_short_profiler_input_only",
+  "formal": false,
+  "fragment_marker_sha256": "6505dd57f107a103fac59bbe2e23af20ee0ab6251f47b0353c381838212560fc",
+  "kind": "tier5_production_nonformal_fragment_only_marker",
+  "ordinal": 0,
+  "row_id": "deepseek_v32.indexshare_fsss.seq1048576",
+  "schema": 1,
+  "status": "PASS"
+}

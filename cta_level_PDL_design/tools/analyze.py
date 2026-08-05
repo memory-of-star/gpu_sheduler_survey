@@ -15,7 +15,8 @@ the decisive questions of the evaluation plan:
     the output can say whether a benefit loss came from MORE EDGES or from a HARDER SHAPE --
     which BlockMaestro's n-group injection could not distinguish.
   * Tier 2.1  Which sync protocol wins, and by how much.
-  * Tier 0.3  Occupancy cost of waiting while resident (the pricing basis for B2).
+  * Tier 0.3  Occupancy and productive-background cost of waiting while resident
+              (the pricing basis for B2).
 
 Usage:
     python3 tools/analyze.py results/summary.txt
@@ -266,6 +267,41 @@ def tier0_occupancy(rows, out):
         print("That delta is what pre-dispatch gating ([H+], BlockMaestro's choice) would buy.")
 
 
+def tier0_background(rows, out):
+    """Surface every productive-background row; never silently drop the new schema."""
+    bg = [r for r in rows if r.get("tier0") == "background"]
+    if not bg:
+        return
+    print("\n" + "=" * 78)
+    print("Tier 0.3  productive background: deferred gate vs resident wait")
+    print("=" * 78)
+    print(f"{'tag':>25} {'smem':>5} {'regs':>5} {'occ':>4} {'peak wait':>9} "
+          f"{'loss% [95% CI]':>25} {'e2e delta ms [95% CI]':>30} {'valid':>6}")
+    for r in sorted(bg, key=lambda x: (str(x.get("reg_tier", "")),
+                                       x.get("smem_kb", 0), str(x.get("tag", "")))):
+        loss = r.get("throughput_loss_pct", 0.0)
+        loss_lo = r.get("throughput_loss_ci_low", loss)
+        loss_hi = r.get("throughput_loss_ci_high", loss)
+        delta = r.get("e2e_delta_ms", 0.0)
+        delta_lo = r.get("e2e_delta_ci_low", delta)
+        delta_hi = r.get("e2e_delta_ci_high", delta)
+        print(f"{str(r.get('tag', '')):>25} {r.get('smem_kb', 0):>5} "
+              f"{r.get('actual_num_regs', 0):>5} {r.get('occ_per_sm', 0):>4} "
+              f"{r.get('peak_waiters_median', 0):>9.1f} "
+              f"{loss:>7.2f} [{loss_lo:>6.2f},{loss_hi:>6.2f}] "
+              f"{delta:>8.4f} [{delta_lo:>8.4f},{delta_hi:>8.4f}] "
+              f"{r.get('valid', 0):>6}")
+    print("\nsemantics=2 rows use the same waiter kernel in both modes; control is "
+          "ordinary same-stream deferred_gate and the test enables PSS resident_wait.")
+    # Preserve complete parsed records in JSON, including future schema additions.  A curated
+    # subset here would recreate the original failure mode by silently discarding new fields.
+    out["tier0_background"] = {
+        "configuration_count": len(bg),
+        "all_valid": all(r.get("valid") == 1 for r in bg),
+        "rows": bg,
+    }
+
+
 def tier0_chain(rows, out):
     ch = [r for r in rows if r.get("tier0") == "chain"]
     if not ch:
@@ -273,18 +309,35 @@ def tier0_chain(rows, out):
     print("\n" + "=" * 78)
     print("Tier 0.1  same-stream chain overlap depth  (which B3 options are reachable)")
     print("=" * 78)
-    print(f"{'stages':>7} {'pdl_off_ms':>12} {'pdl_on_ms':>12} {'speedup':>9} {'implied_depth':>14}")
-    depths = []
+    print(f"{'stages':>7} {'pdl_off_ms':>12} {'pdl_on_ms':>12} {'paired':>9} "
+          f"{'model_depth':>12} {'trace_grids':>12}")
+    model_depths = []
+    trace_depths = []
     for r in sorted(ch, key=lambda x: x.get("stages", 0)):
+        paired = r.get("paired_speedup", r.get("speedup", 0))
+        model_depth = r.get("model_implied_chain_depth", r.get("implied_depth", 0))
+        trace_grids = r.get("pdl_on_peak_active_grids_max")
         print(f"{r.get('stages', 0):>7} {r.get('pdl_off_ms', 0):>12.4f} "
-              f"{r.get('pdl_on_ms', 0):>12.4f} {r.get('speedup', 0):>9.3f} "
-              f"{r.get('implied_depth', 0):>14.2f}")
-        depths.append(r.get("implied_depth", 0))
-    if depths:
-        print(f"\nMax implied overlap depth: {max(depths):.2f}")
-        print("If this saturates near 2, B300 only ever overlaps a PAIR of kernels and the")
-        print("deeper-window options of dimension B3 are unreachable without new mechanisms.")
-    out["tier0_max_overlap_depth"] = max(depths) if depths else None
+              f"{r.get('pdl_on_ms', 0):>12.4f} {paired:>9.3f} "
+              f"{model_depth:>12.2f} "
+              f"{str(trace_grids) if trace_grids is not None else 'n/a':>12}")
+        model_depths.append(model_depth)
+        if isinstance(trace_grids, (int, float)):
+            trace_depths.append(trace_grids)
+    if model_depths:
+        print(f"\nMax model-implied chain depth: {max(model_depths):.2f}")
+        print("This is an algebraic transform of paired speedup, not simultaneous grid depth.")
+    if trace_depths:
+        print(f"Max trace-observed active grids: {max(trace_depths):.0f}")
+    else:
+        print("No schema-2 trace depth is present; legacy implied_depth must not be read as")
+        print("the number of simultaneously active grids.")
+    out["tier0_model_implied_chain_depth"] = (
+        max(model_depths) if model_depths else None
+    )
+    out["tier0_trace_peak_active_grids"] = (
+        max(trace_depths) if trace_depths else None
+    )
 
 
 def tier0_clc(rows, out):
@@ -353,6 +406,7 @@ def main():
     tier1_structure(rows, out)
     tier1_grid(rows, out)
     tier2_protocols(rows, out)
+    tier0_background(rows, out)
     tier0_occupancy(rows, out)
 
     if args.csv:

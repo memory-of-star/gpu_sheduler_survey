@@ -1,0 +1,46 @@
+{
+  "accepted_timing": 0,
+  "allowed_exit_residual_max_observations_per_pid": 4,
+  "allowed_exit_residual_observation_count": 0,
+  "allowed_exit_residual_processes": [],
+  "allowed_observation_count": 39,
+  "allowed_processes": [
+    {
+      "pid": 1957067,
+      "proc_start_ticks": 217326170
+    }
+  ],
+  "baseline_observation_sequence": 0,
+  "coverage_limit": "foreign GPU processes wholly between completed samples may not be observed",
+  "coverage_model": "bounded_interval_nvidia_smi_process_sampling",
+  "errors": [],
+  "exit_residual_policy": "previously_observed_allowed_same_pid_start_ticks_and_exact_No_data_with_proc_missing_only_bounded_per_pid",
+  "finished_at": "2026-08-05T14:25:12.878423+00:00",
+  "foreign_processes_detected": false,
+  "kind": "gpu_exclusivity_monitor",
+  "lease_id": "cfc6850ab9b7672480216d64afbc4d91d64382b87debabe61fde814912867616",
+  "lease_path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_compact_formal_v1_16g/rows/007_glm5.operator_chain.seq4096.inprogress.yGBr0U/gpu_exclusivity_lease.json",
+  "max_allowed_exit_residual_observations_observed": 0,
+  "measurement_role": "gpu_exclusivity_monitor_only",
+  "observation_count": 117,
+  "observations_path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_compact_formal_v1_16g/rows/007_glm5.operator_chain.seq4096.inprogress.yGBr0U/gpu_observations.ndjson",
+  "observations_sha256": "bee73c71c749987df4bfd882416e4019b57a91d646a23268fb30dbe6380b27ee",
+  "phase": "production_tier5_fragment_7_glm5.operator_chain.seq4096_8c2fd0c5-bb25-4e1a-ae0b-d249cccaab43_monitor",
+  "poll_interval_ms": 50,
+  "query_failure_detected": false,
+  "query_timeout_ms": 2000,
+  "ready_record_written": true,
+  "require_allowed_process": true,
+  "schema": 1,
+  "start_barrier_complete": true,
+  "started_at": "2026-08-05T14:25:01.986127+00:00",
+  "status": "PASS",
+  "target_gpu": {
+    "index": 0,
+    "name": "NVIDIA B200",
+    "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+  },
+  "terminated_on_failure": false,
+  "watch_pid": 1957067,
+  "watch_root_start_ticks": 217326170
+}

@@ -1,0 +1,46 @@
+{
+  "accepted_timing": 0,
+  "allowed_exit_residual_max_observations_per_pid": 4,
+  "allowed_exit_residual_observation_count": 0,
+  "allowed_exit_residual_processes": [],
+  "allowed_observation_count": 28,
+  "allowed_processes": [
+    {
+      "pid": 2023736,
+      "proc_start_ticks": 217350530
+    }
+  ],
+  "baseline_observation_sequence": 0,
+  "coverage_limit": "foreign GPU processes wholly between completed samples may not be observed",
+  "coverage_model": "bounded_interval_nvidia_smi_process_sampling",
+  "errors": [],
+  "exit_residual_policy": "previously_observed_allowed_same_pid_start_ticks_and_exact_No_data_with_proc_missing_only_bounded_per_pid",
+  "finished_at": "2026-08-05T14:29:15.669083+00:00",
+  "foreign_processes_detected": false,
+  "kind": "gpu_exclusivity_monitor",
+  "lease_id": "c81c2ae6a3c1307c09b7fe910994be07bb51fe4f845f5c04afc4d210c9ab4e2f",
+  "lease_path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_compact_formal_v1_16g/rows/013_glm5.moe32.inprogress.sYsXd6/gpu_exclusivity_lease.json",
+  "max_allowed_exit_residual_observations_observed": 0,
+  "measurement_role": "gpu_exclusivity_monitor_only",
+  "observation_count": 106,
+  "observations_path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_compact_formal_v1_16g/rows/013_glm5.moe32.inprogress.sYsXd6/gpu_observations.ndjson",
+  "observations_sha256": "ae3b17a16ccd794a565d30f9b4d70b45a590a793db84c5ff50fa9f20d64eb78c",
+  "phase": "production_tier5_fragment_13_glm5.moe32_8cedbdde-0429-4a10-b1eb-d9e0c4355761_monitor",
+  "poll_interval_ms": 50,
+  "query_failure_detected": false,
+  "query_timeout_ms": 2000,
+  "ready_record_written": true,
+  "require_allowed_process": true,
+  "schema": 1,
+  "start_barrier_complete": true,
+  "started_at": "2026-08-05T14:29:05.586617+00:00",
+  "status": "PASS",
+  "target_gpu": {
+    "index": 0,
+    "name": "NVIDIA B200",
+    "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+  },
+  "terminated_on_failure": false,
+  "watch_pid": 2023736,
+  "watch_root_start_ticks": 217350530
+}

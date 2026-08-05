@@ -1,0 +1,3 @@
+TIER5_CAMPAIGN_CONTRACT status=PASS rows=2 formal=0 sha256=5add35e82fd6991e7aea084876307ff626be14f6e24524f6c84cdf4f8d72118e
+[2026-08-05T13:55:31Z] sealed row=deepseek_v32.indexshare_fsss.seq1048576 ordinal=0 invocation=b7ed8eaf-409c-481e-8e2f-ac255f14167a
+[2026-08-05T13:55:31Z] nonformal fragment-only campaign complete row=deepseek_v32.indexshare_fsss.seq1048576 accepted_workload_timing=0

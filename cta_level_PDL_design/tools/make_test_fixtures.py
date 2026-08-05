@@ -14,6 +14,7 @@ SUMMARY_PILOT records emitted by cta_dep_pilot, which is what decides the Tier 1
 Usage:
     python3 tools/make_test_fixtures.py --out /tmp/ctafix
     python3 tools/analyze_pilot.py /tmp/ctafix/pilot_matrix.log \\
+            --expected /tmp/ctafix/pilot_expected_tags.txt \\
             --json /tmp/ctafix/pilot_analysis.json --csv /tmp/ctafix/pilot_summary.csv
     python3 tools/analyze.py      /tmp/ctafix/summary.txt
     python3 tools/cta_timeline.py /tmp/ctafix/trace.csv
@@ -116,7 +117,7 @@ def gen_trace(path, n_cta=512, sms=148, seed=7):
 PILOT_MODES = ("none", "grid", "interval-spin", "interval-backoff", "exact-backoff")
 
 
-def gen_pilot(path, sms=148, repeats=5, seed=11):
+def gen_pilot(path, expected_path, sms=148, repeats=31, seed=11):
     """SAMPLE + SUMMARY_PILOT records in cta_dep_pilot's format.
 
     Mirrors the tags run_all.sh tier1p produces, so analyze_pilot.py -- the script that
@@ -124,8 +125,12 @@ def gen_pilot(path, sms=148, repeats=5, seed=11):
     """
     rnd = random.Random(seed)
     L = []
+    expected = []
 
-    def config(tag, struct, deg, grid, tight, space, captured, tail=0, wave="underfilled"):
+    def config(tag, struct, deg, grid, tight, space, captured, tail=1000000,
+               wave="underfilled", requested_deg=None):
+        expected.append(tag)
+        requested_deg = deg if requested_deg is None else requested_deg
         floor = 1.0
         base = {"grid": floor,
                 "none": floor * (1 - space / 100),
@@ -137,17 +142,28 @@ def gen_pilot(path, sms=148, repeats=5, seed=11):
             vals = [base[mode] * (1 + rnd.uniform(-0.004, 0.004)) for _ in range(repeats)]
             per_mode[mode] = vals
             for rep, ms in enumerate(vals):
-                L.append(f"SAMPLE tag={tag} mode={mode} rep={rep} ms={ms:.6f}")
+                L.append(
+                    f"SAMPLE tag={tag} mode={mode} rep={rep} ms={ms:.6f} "
+                    "trace_attempts=1 trace_complete=1"
+                )
 
         def med(m):
             return sorted(per_mode[m])[repeats // 2]
 
         f, c, i = med("grid"), med("none"), med("interval-backoff")
         L.append(f"SUMMARY_PILOT semantics=2 tag={tag} structure={struct} degree={deg} "
+                 f"requested_degree={requested_deg} unique_parents=1 "
                  f"eff_degree={deg/tight:.2f} tightness={tight:.4f} producers={grid} "
                  f"consumers={grid} threads=128 sms={sms} wave={wave} "
-                 f"producer_occ=16 consumer_occ=16 "
+                 f"launch_gate=trace_verified multiwave_overlap_proven=1 "
+                 f"producers_unstarted_at_consumer={max(1, grid // 4)} "
+                 f"producer_progress_complete=1 floor_early_launch_proven=1 "
+                 f"ceiling_wrong=1 producer_occ=16 consumer_occ=3 consumer_smem_kb=64 "
+                 f"producer_slot_reserved=1 floor_path=programmatic_graph "
+                 f"impl_path=priority_streams ceiling_path=priority_streams timer=globaltimer "
                  f"trigger_floor=ready trigger_impl=entry trigger_ceiling=entry "
+                 f"trace_retries=0 trace_retry_limit=3 trace_max_attempts=4 "
+                 f"trace_max_attempts_observed=1 "
                  f"ready=400000 tail={tail} prologue=200000 epilogue=1000000 skew_bins=8 "
                  f"repeats={repeats} floor_ms={f:.6f} ceiling_ms={c:.6f} "
                  f"interval_spin_ms={med('interval-spin'):.6f} "
@@ -163,25 +179,31 @@ def gen_pilot(path, sms=148, repeats=5, seed=11):
             return "single_full"
         return "underfilled"
 
-    # Tier 1.1p degree axis, structure pinned. Include multi-wave grids (§5.3).
-    for g in (64, 148, 296, 1184, 4736):
-        for d in (1, 8, 32):
+    grids = (32, 64, 128, 148, 296, 1184, 4736)
+    degrees = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)
+
+    # Tier 1.1p degree axis, structure pinned. This is the exact formal grid emitted by
+    # run_all.sh on a 148-SM B200: two underfilled points, one full point, and 2x/8x/32x.
+    for g in grids:
+        for d in degrees:
             if d > g:
-                continue
-            # Keep fixture count modest: only d in {1,8} on the largest multi-wave points.
-            if g >= 1184 and d == 32:
                 continue
             config(f"t11p_g{g}_d{d}", "interval", d, g, 1.0,
                    space=max(4.0, 28.0 * (1 - d / 300)),
                    captured=max(1.5, 9.9 * (1 - d / 300)),
                    wave=wave_name(g))
 
-    # Tier 1.1p structure axis, degree pinned -> tightness drives the benefit.
-    for g in (64, 148, 296):
-        for s, tight in (("interval", 1.00), ("self", 1.00),
-                         ("grouped", 0.90), ("strided", 0.23)):
-            config(f"t11ps_g{g}_{s}", s, 32, g, tight, space=26.0 * tight,
-                   captured=9.9 * tight, wave=wave_name(g))
+    # The interval,d=32 physical coordinate already exists on the degree axis. The other
+    # four structures are distinct; self is deliberately the semantic d=1 control even
+    # though the CLI request remains 32, matching cta_dep_pilot's emitted metadata.
+    for g in grids:
+        for s, actual_deg, requested_deg, tight in (
+                ("self", 1, 32, 1.00),
+                ("grouped", 32, 32, 0.90),
+                ("strided", 32, 32, 0.23),
+                ("random", 32, 32, 0.08)):
+            config(f"t11ps_g{g}_{s}", s, actual_deg, g, tight, space=26.0 * tight,
+                   captured=9.9 * tight, wave=wave_name(g), requested_deg=requested_deg)
 
     # Tier 1.2p tail/prologue ratio.
     for r in (1, 2, 4, 8, 16):
@@ -189,12 +211,8 @@ def gen_pilot(path, sms=148, repeats=5, seed=11):
                space=min(48.0, 9.0 * r), captured=min(36.0, 6.5 * r),
                tail=200000 * r, wave="single_full")
 
-    # Two seeds of one config, so the across-seed aggregation path is exercised too.
-    for s in (202, 303):
-        config(f"t11p_g148_d8_s{s}", "interval", 8, 148, 1.0, space=27.0, captured=9.8,
-               wave="single_full")
-
     open(path, "w").write("\n".join(L) + "\n")
+    open(expected_path, "w").write("\n".join(expected) + "\n")
     return sum(1 for line in L if line.startswith("SUMMARY_PILOT"))
 
 
@@ -209,14 +227,39 @@ def gen_llm(path):
             scale = 1.0 if seq == 4096 else 0.55
             for rung, tps, ceilflag in (("pdl_off", off, 0), ("pdl_grid", grid, 0),
                                         ("ceiling", ceil, 1)):
-                L.append(f"SUMMARY tier=4 tag={rung}_bs{bs}_seq{seq} rung={rung} status=ok "
-                         f"engine=vllm batch={bs} seq={seq} gen=64 iters=8 "
-                         f"median_s={64*bs/(tps*scale):.5f} min_s={64*bs/(tps*scale):.5f} "
-                         f"tok_per_s={tps*scale:.3f} "
-                         f"tok_per_s_per_user={tps*scale/bs:.3f} "
-                         f"pdl_trt={0 if rung=='pdl_off' else 1} "
-                         f"pdl_inductor={0 if rung=='pdl_off' else 1} "
-                         f"ceiling={ceilflag} verified={1-ceilflag}")
+                value = tps * scale
+                per_user = value / bs
+                median_s = 64 * bs / value
+                enabled = 0 if rung == "pdl_off" else 1
+                waits = 4 if rung == "pdl_grid" else 0
+                launches = 0 if rung == "pdl_off" else 4
+                L.append(
+                    f"SUMMARY tier=4 kind=measurement status=ok "
+                    f"tag={rung}_bs{bs}_seq{seq} rung={rung} engine=vllm "
+                    f"batch={bs} seq={seq} gen=64 repetitions=31 "
+                    f"ci_method=bootstrap_95pct median_s={median_s:.6f} "
+                    f"median_s_ci_low={median_s*0.99:.6f} "
+                    f"median_s_ci_high={median_s*1.01:.6f} "
+                    f"tok_per_s={value:.6f} tok_per_s_ci_low={value*0.99:.6f} "
+                    f"tok_per_s_ci_high={value*1.01:.6f} "
+                    f"tok_per_s_per_user={per_user:.6f} "
+                    f"tok_per_s_per_user_ci_low={per_user*0.99:.6f} "
+                    f"tok_per_s_per_user_ci_high={per_user*1.01:.6f} "
+                    f"triplet_mode=same_process_adjacent "
+                    f"triplet_id=synth_bs{bs}_seq{seq} driver_pid=4242 "
+                    f"worker_cohort=synthetic_workers model_fingerprint=synthetic_model "
+                    f"output_digest={'ceiling_wrong' if ceilflag else 'correct_digest'} "
+                    f"graph_mode=FULL graph_execution_proof=nsys_cuda_graph_node "
+                    f"proof_scope=worker+isolated_ptx+cubin+nsys_graph cache_fresh=1 "
+                    f"pdl_inductor={enabled} ceiling={ceilflag} worker_pdl={enabled} "
+                    f"worker_ceiling_hook={ceilflag} verified={1-ceilflag} "
+                    f"ptx_wait_count={waits} ptx_launch_count={launches} "
+                    f"ptx_files=2 cubin_files=2 paired_cubin_files=2 "
+                    f"nsys_graph_kernel_events=10 "
+                    f"nsys_off_entry_matches={2 if rung == 'pdl_off' else 0} "
+                    f"nsys_wait_entry_matches={2 if rung == 'pdl_grid' else 0} "
+                    f"nsys_launch_entry_matches={2 if rung != 'pdl_off' else 0}"
+                )
     open(path, "w").write("\n".join(L) + "\n")
     return len(L)
 
@@ -232,13 +275,16 @@ def main():
     t = os.path.join(args.out, "trace.csv")
     m = os.path.join(args.out, "summary_llm.txt")
     p = os.path.join(args.out, "pilot_matrix.log")
+    e = os.path.join(args.out, "pilot_expected_tags.txt")
 
     print(f"summary.txt      {gen_summary(s):5d} SUMMARY rows  -> {s}")
     print(f"trace.csv        {gen_trace(t):5d} CTA records   -> {t}")
     print(f"summary_llm.txt  {gen_llm(m):5d} SUMMARY rows  -> {m}")
-    print(f"pilot_matrix.log {gen_pilot(p):5d} pilot configs -> {p}")
+    print(f"pilot_matrix.log {gen_pilot(p, e):5d} pilot configs -> {p}")
+    print(f"expected tags                              -> {e}")
     print("\nValidate the toolchain with:")
     print(f"  python3 tools/analyze_pilot.py {p} \\")
+    print(f"          --expected {e} \\")
     print(f"          --json {args.out}/pilot_analysis.json --csv {args.out}/pilot_summary.csv")
     print(f"  python3 tools/analyze.py      {s}")
     print(f"  python3 tools/cta_timeline.py {t}")

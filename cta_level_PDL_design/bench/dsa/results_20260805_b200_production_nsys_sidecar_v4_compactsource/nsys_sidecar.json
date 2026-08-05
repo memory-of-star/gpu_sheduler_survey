@@ -1,0 +1,71 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "campaign_contract_sha256": "7b77dec29ee9a2b58ec8c07b13509b129d8a4a199ce39bf6e2db8f7c0620acf9",
+  "campaign_fingerprint_sha256": "992adaf07bc34abfb9d400337ab4c9f9c76aab40b5aaf65b7e8058f3eb7afd27",
+  "campaign_mode": "nonformal_short_profiler_sidecar_only",
+  "capture_proof": {
+    "cuda_api_tokens": [
+      "cudalaunchkernel"
+    ],
+    "fragment_invocation_uuid": "d3b18f95-11a8-47cf-895d-c047408490c2",
+    "nvtx_range_prefix": "tier5_fragment:0:deepseek_v32.operator_chain.seq4096:d3b18f95-11a8-47cf-895d-c047408490c2",
+    "report_parsed_by_nsys_stats": true,
+    "stats_path": "nsys_stats.txt",
+    "stats_sha256": "b0da695a6edb803a253b45b9860102d46e3fee9150b0dda4bea57f121228b446",
+    "stats_size_bytes": 43313,
+    "target_kernel_tokens": [
+      "mqa",
+      "topk",
+      "gemm"
+    ]
+  },
+  "formal": false,
+  "fragment_marker_sha256": "65d95154fb7e067823d39f319c096f9cb3a392b011f58605112e66d6d1c8cbc0",
+  "kind": "tier5_production_nsys_sidecar",
+  "measurement_role": "profiler_diagnostic_only",
+  "nsys_report": {
+    "path": "profile.nsys-rep",
+    "sha256": "ae7ccebfa08c6bccac79dc4b70dd785e20e4669a84455973b319f099cac994bc",
+    "size_bytes": 12784006
+  },
+  "ordinal": 0,
+  "profiler": {
+    "profile_argv": [
+      "/usr/local/cuda-13.0/bin/nsys",
+      "profile",
+      "--trace=cuda,nvtx,osrt",
+      "--sample=none",
+      "--cpuctxsw=none",
+      "--force-overwrite=false",
+      "--output",
+      "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_nsys_sidecar_v4_compactsource.inprogress.S3DHJf/profile",
+      "bash",
+      "./run_production_tier5_fragments.sh"
+    ],
+    "profile_argv_sha256": "3b7ae471452e8ee527c5137f29a45ec6bc66c676e79ec36c41101ffd6aca15aa",
+    "resolved_path": "/usr/local/cuda-13.0/bin/nsys",
+    "sha256": "7bcae8a7ea636e62fdbf53e4df87fe0348efe70ed6630b6a47ef79d6312a4786",
+    "stats_argv": [
+      "/usr/local/cuda-13.0/bin/nsys",
+      "stats",
+      "--report",
+      "cuda_gpu_kern_sum",
+      "--report",
+      "cuda_api_sum",
+      "--report",
+      "nvtx_sum",
+      "--format",
+      "csv",
+      "--output",
+      "-",
+      "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_nsys_sidecar_v4_compactsource.inprogress.S3DHJf/profile.nsys-rep"
+    ],
+    "stats_argv_sha256": "679f7393b7a0ffad3d066517d0275c1bce69d20d6e5752a59e25457d465780f1",
+    "version": "NVIDIA Nsight Systems version 2025.3.2.474-253236389321v0"
+  },
+  "row_id": "deepseek_v32.operator_chain.seq4096",
+  "schema": 1,
+  "status": "PASS"
+}

@@ -16,7 +16,7 @@ benefit map in the multi-wave regime `P,C > SM`. Read `AGENTS.md` §4 and §7, a
 - `bench/<results>/device.txt` — the device you actually ran on
 - `bench/<results>/failures.log` — steps that failed; the session continued past them
 - `bench/<results>/session.log` — the whole run
-- the previous single-wave report, `reports/tier1_benefit_map/corrected_producer_consumer_pilot.md`,
+- the previous `P,C<=SM` ratio-limited report, `reports/tier1_benefit_map/corrected_producer_consumer_pilot.md`,
   so the new one states what changed rather than repeating it
 
 ## Rules that decide whether the report is admissible
@@ -26,8 +26,11 @@ benefit map in the multi-wave regime `P,C > SM`. Read `AGENTS.md` §4 and §7, a
 - **Read the verdict together with its caveats.** `plan_multi_complete` tells you whether
   the `2×/8×/32× SM` set is actually present. A `GO` without it supports "go measure a real
   workload", not "spend the full Tier 2/3 budget".
-- **`INVALID` means no timing from this run is usable.** If the verdict is `INVALID`, the
-  report says which configurations failed validation and quotes no timings at all.
+- **`INVALID` means no timing from this run is usable.** Correctness or a required per-config
+  semantic-trace failure causes `INVALID`; identify those failures and quote no timings. Missing
+  manifest rows, too few repeats, or incomplete plan-wide coverage instead makes the numeric
+  verdict provisional and keeps Tier 2/3 closed; report those gaps without relabelling the run
+  `INVALID`.
 - **State how the harness satisfies each of `AGENTS.md` §4's rules, with evidence.** The
   `SUMMARY_PILOT` records self-report `trigger_floor=`, `trigger_impl=`, `trigger_ceiling=`,
   `wave=`, `sms=`, `tightness=`, `eff_degree=`, `valid=`; use those. Where a rule cannot be
@@ -40,7 +43,7 @@ benefit map in the multi-wave regime `P,C > SM`. Read `AGENTS.md` §4 and §7, a
 
 ## The report
 
-Path: `reports/tier1_benefit_map/multiwave_degree_grid_map.md`. Chinese prose, following
+Path: `reports/tier1_benefit_map/multiwave_degree_structure_map.md`. Chinese prose, following
 `reports/tier0_base_facts/0_5_fence_scope.md` as the structural model, with all eight
 sections `AGENTS.md` §7 requires:
 
@@ -51,7 +54,7 @@ sections `AGENTS.md` §7 requires:
 4. Configuration and statistics — warmup count, timed repeats, timing method, aggregation
 5. Recomputation of every headline number from raw values, arithmetic shown
 6. 能成立的结论
-7. **不能成立的结论** — mandatory; single-wave-vs-multi-wave extrapolation limits, synthetic
+7. **不能成立的结论** — mandatory; ratio-limited-vs-trace-proven-multi-wave extrapolation limits, synthetic
    microbenchmark limits, and anything `failures.log` cost you belong here
 8. Evidence entry points — source, raw logs, summary lines, umbrella report
 
@@ -59,7 +62,7 @@ Link convention: visible text is the path relative to the subtree root, href is 
 relative path. From `reports/tier1_benefit_map/`, the benchmark source is text
 `bench/cta_dep_pilot.cu`, href `../../bench/cta_dep_pilot.cu`.
 
-The single most valuable comparison is **single-wave versus multi-wave at the same degree and
+The single most valuable comparison is **`P,C<=SM` ratio points versus trace-proven multi-wave at the same degree and
 structure**: the old report has the `P,C <= SM` numbers, this run has `2×/8×/32× SM`. Say
 whether the benefit structure changed, and by how much. That is the question §5.3 exists to
 answer, and it decides whether the direction is worth investment rather than merely feasible.
@@ -81,4 +84,4 @@ Run `python3 codex/check_docs.py` and fix whatever it reports. Do not add entrie
 - Do not soften or inflate. A synthetic microbenchmark passing a gate is "mechanism feasible
   under stated limits", never "N% speedup".
 - Do not edit anything under `bench/results*/` — those are raw session evidence.
-- Do not delete or rewrite the existing single-wave report; the new report supersedes nothing.
+- Do not delete or rewrite the existing ratio-limited report; the new report supersedes nothing.

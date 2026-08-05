@@ -1,0 +1,55 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_timing_semantics": "legacy_CTA_bracket_only",
+  "accepted_workload_timing": 0,
+  "claim_scope": "production_kernel_characterization_only",
+  "correctness_sha256": "52346a2372e8ff39ddcee3057742aa5ff6a0c04805d269681f9e0a7e8bf5117d",
+  "execution_scope": "row_fragment",
+  "formal_bracket_status": "PARTIAL",
+  "fragment": {
+    "campaign_contract_sha256": "3f3c604d9892f523bde2ccb51bad8c9808fc0d25ad4cb1a31c060964486f1029",
+    "campaign_fingerprint_sha256": "9ebe458761d3b2aad60b679662fa1d3ba2a620b04ccc0ff4dc987feee3eebd52",
+    "derived_row_seed": 22160805,
+    "execution_segment_id": "8cedbdde-0429-4a10-b1eb-d9e0c4355761",
+    "expected_row_count": 14,
+    "invocation_uuid": "8cedbdde-0429-4a10-b1eb-d9e0c4355761",
+    "ordinal": 13,
+    "row": {
+      "model": "glm5",
+      "pdl_modes": [
+        "framework_default_uncontrolled"
+      ],
+      "row_id": "glm5.moe32",
+      "seq": null,
+      "workload": "moe32"
+    },
+    "row_id": "glm5.moe32"
+  },
+  "headroom_defined": false,
+  "headroom_pct": null,
+  "kind": "tier5_production_dsa_result",
+  "manifest_sha256": "ffcf54c3fc03769154cbf927b16a8b3ffeafac3e5450a7aba159c88c4b13f87e",
+  "measurement_emitted": true,
+  "production_timing_candidate": true,
+  "sample_count": 31,
+  "samples_sha256": "039f03113cf7444a2d10907dbe90955bd438a07a1dedeb5f1bd27e97cc0ff8b6",
+  "schema": 1,
+  "status": "CANDIDATE",
+  "summaries": [
+    {
+      "bootstrap_95pct_ci_ms": [
+        2.9197120666503906,
+        3.0294079780578613
+      ],
+      "component": "fused_topk_plus_fused_experts",
+      "max_ms": 3.142911911010742,
+      "median_ms": 2.932512044906616,
+      "min_ms": 2.8962879180908203,
+      "pdl_mode": "framework_default_uncontrolled",
+      "row_id": "glm5.moe32",
+      "sample_count": 31
+    }
+  ],
+  "tier5_bracket_admitted": false
+}

@@ -1,0 +1,153 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_compact_workload_timing": 1,
+  "accepted_exact26_workload_timing": 0,
+  "accepted_timing": 0,
+  "accepted_timing_semantics": "legacy_CTA_bracket_only",
+  "accepted_workload_timing": 0,
+  "admission_body_sha256": "64f2e1b127129334a15a2b2a4aa488c9a55a64f14622aa70061f1b0e57050a76",
+  "artifacts": {
+    "campaign_binding.json": {
+      "sha256": "e0fe89d9ebfd744221037fcadb6a443a5d8aaa9287e903d1590d1f1f573c92b0",
+      "size_bytes": 773
+    },
+    "campaign_contract.json": {
+      "sha256": "f7c6f31481e25398de286f80793d256b0659eb443bbbb034dafed7dda12b6cef",
+      "size_bytes": 43289
+    },
+    "campaign_validation.json": {
+      "sha256": "67ece95170a29011fc8d102cbfb780e3b70acd7b4241f52c5b413bbf45f300c8",
+      "size_bytes": 332
+    },
+    "correctness.json": {
+      "sha256": "e7adbf21b4877ce606c4f706abcba085e115f63c8980d7a1dc7326cab6fa5f62",
+      "size_bytes": 1908498
+    },
+    "manifest.json": {
+      "sha256": "dc4234e0e8beaf39d7844404f78472d3a493c685e8b39d527d22a530283c0799",
+      "size_bytes": 43786
+    },
+    "production_candidate.done.json": {
+      "sha256": "cececf5ce193c66eac0e6ed23bb90024d28e6c2b8f0c2df78ecfffd735fab41f",
+      "size_bytes": 4844
+    },
+    "result.json": {
+      "sha256": "6842d85a42ca52757526f09f50fe17e94f1fd10ce18779b35b34fab9bab6da27",
+      "size_bytes": 27220
+    },
+    "samples.jsonl": {
+      "sha256": "937eaab4e0ee00d193ef3399812ec08f6fc9c36244074a94825a7e7ba5b756e9",
+      "size_bytes": 1009152
+    }
+  },
+  "bindings": {
+    "campaign_contract_sha256": "3f3c604d9892f523bde2ccb51bad8c9808fc0d25ad4cb1a31c060964486f1029",
+    "campaign_fingerprint_sha256": "9ebe458761d3b2aad60b679662fa1d3ba2a620b04ccc0ff4dc987feee3eebd52",
+    "compact_matrix_sha256": "80fdc6a359c99532def65cd424528809e1eff07bed90197c2a98ac46046a4514",
+    "compact_validator": {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/validate_production_tier5_compact.py",
+      "sha256": "aed51232e26f8675c2043852ebb82768778e2ccf9616f120f2d9ac1b9a287a0a",
+      "size_bytes": 13230
+    },
+    "controls_sha256": "2417125ce91a31696ec3d649ad1125b838159a76698b9e627b497ef3c67a76f6",
+    "package_manifest_sha256": "0c42d55af10aa1eee471565ecc1798390b97992e5b5b2d25ef2e7902bdfd56e6",
+    "runtime_build_sha256": "1a6741f693e40777ad2810fd2e0331b6f6854757e5823fc09ff03bc4954d3444",
+    "source_manifest_sha256": "5c5f80900529728d5f57a8eb78a6d55c10ffb3772bf0a46be64541fa0778c89c",
+    "target_gpu": {
+      "index": 0,
+      "name": "NVIDIA B200",
+      "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+    }
+  },
+  "claim_scope": {
+    "contexts": [
+      4096,
+      131072
+    ],
+    "excluded": {
+      "context_timing": [
+        32768,
+        1048576
+      ],
+      "cta_bracket": true,
+      "exact_26_row_campaign": true,
+      "tier5_headroom": true
+    },
+    "models": [
+      "deepseek_v32",
+      "glm5"
+    ],
+    "moe32": {
+      "experts": 32,
+      "models": [
+        "deepseek_v32",
+        "glm5"
+      ],
+      "rows_per_model": 1,
+      "tokens": 4096,
+      "topk": 8
+    },
+    "name": "compact_production_workload_component_timing",
+    "statistics": {
+      "correctness_sampling": "NONE",
+      "paired_pdl_off_on": true,
+      "timed_repeats": 31,
+      "warmup": 5
+    },
+    "workloads": [
+      "operator_chain",
+      "single_layer",
+      "indexshare_fsss"
+    ]
+  },
+  "errors": [],
+  "exact26_campaign_completed": false,
+  "excluded_seqs": [
+    32768,
+    1048576
+  ],
+  "expected_cardinalities": {
+    "correctness_rows": 14,
+    "samples": 1302,
+    "summaries": 62
+  },
+  "formal_bracket_status": "PARTIAL",
+  "headroom_defined": false,
+  "headroom_pct": null,
+  "included_models": [
+    "deepseek_v32",
+    "glm5"
+  ],
+  "included_seqs": [
+    4096,
+    131072
+  ],
+  "included_workloads": [
+    "operator_chain",
+    "single_layer",
+    "indexshare_fsss"
+  ],
+  "kind": "tier5_production_compact_campaign_admission",
+  "observed_cardinalities": {
+    "correctness_rows": 14,
+    "samples": 1302,
+    "summaries": 62
+  },
+  "schema": 1,
+  "status": "PASS",
+  "strict_final_validation": {
+    "checker": "production_tier5_campaign.check_final_campaign",
+    "closure": [
+      "exact_fragment_inventory_and_marker_hashes",
+      "fragment_semantics_and_aggregate_reconstruction",
+      "gpu_identity_and_exclusivity_binding",
+      "uniform_runtime_build_identity",
+      "package_and_source_manifests"
+    ],
+    "completion_marker_sha256": "cececf5ce193c66eac0e6ed23bb90024d28e6c2b8f0c2df78ecfffd735fab41f",
+    "fragment_count": 14,
+    "status": "PASS"
+  },
+  "tier5_bracket_admitted": false
+}

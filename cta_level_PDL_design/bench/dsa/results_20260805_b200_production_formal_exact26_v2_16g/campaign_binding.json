@@ -1,0 +1,18 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "campaign_fingerprint_sha256": "6eedb57203a08917ec487070e0b6c0882c39a9f3de3400697e3acc3e70a09467",
+  "contract_sha256": "3a56f9e03ecd00f380f52f7f556f95956b1cf9d52058df84b558f763c701da2b",
+  "controls_sha256": "8c79d9a2c5217c6fcf0513a232e0b5200c73da93c9c36d71b46f056b3bd224d8",
+  "kind": "tier5_production_campaign_device_binding",
+  "package_manifest_sha256": "0c42d55af10aa1eee471565ecc1798390b97992e5b5b2d25ef2e7902bdfd56e6",
+  "schema": 1,
+  "source_manifest_sha256": "de582cd4422e88c1b4f530d63aa96ec6ac1abe97a82e2ea81d7096427b0d92b2",
+  "status": "FROZEN",
+  "target_gpu": {
+    "index": 0,
+    "name": "NVIDIA B200",
+    "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+  }
+}

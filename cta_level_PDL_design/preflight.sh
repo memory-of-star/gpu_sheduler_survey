@@ -82,7 +82,7 @@ if command -v nvcc >/dev/null 2>&1; then
         ok "all benchmarks compiled"
         # cta_dep_pilot is the corrected harness and the only admissible source of Tier 1
         # gate data, so a missing pilot binary is fatal, not cosmetic.
-        for b in cta_dep_pilot tier0_facts; do
+        for b in cta_dep_pilot tier0_facts tier0_background; do
             [ -x "bench/${b}" ] && ok "  bench/${b}" || bad "  bench/${b} missing"
         done
         [ -x bench/cta_dep_bench ] && ok "  bench/cta_dep_bench (rejected harness, re-audit only)" \
@@ -101,10 +101,16 @@ fi
 echo
 echo "4. Python / analysis chain"
 PY=$(python3 --version 2>&1) && ok "${PY}" || bad "python3 not found"
+printf '%s\n' '{"status":"PASS","stale":true}' > /tmp/preflight_tier0_chain.json
 if python3 tools/make_test_fixtures.py --out /tmp/preflight_fix > /dev/null 2>&1 \
    && python3 tools/analyze.py      /tmp/preflight_fix/summary.txt     > /dev/null 2>&1 \
    && python3 tools/cta_timeline.py /tmp/preflight_fix/trace.csv       > /dev/null 2>&1 \
-   && python3 tools/llm_bracket.py  /tmp/preflight_fix/summary_llm.txt > /dev/null 2>&1; then
+   && python3 tools/llm_bracket.py  /tmp/preflight_fix/summary_llm.txt > /dev/null 2>&1 \
+   && python3 -m py_compile tools/validate_tier0_chain.py \
+   && bash -n bench/run_all.sh run_session.sh \
+   && ! python3 tools/validate_tier0_chain.py /tmp/preflight_fix \
+        --json /tmp/preflight_tier0_chain.json > /dev/null 2>&1 \
+   && python3 -c 'import json; d=json.load(open("/tmp/preflight_tier0_chain.json")); raise SystemExit(0 if d.get("status")=="FAIL" and not d.get("stale") else 1)'; then
     ok "analysis toolchain works on synthetic fixtures"
 else
     bad "analysis toolchain broken — fix BEFORE running experiments"
@@ -112,6 +118,7 @@ fi
 # The gate path is what makes the session unattended: if analyze_pilot.py or gate.py is
 # broken, the run produces numbers that nothing can turn into a decision.
 if python3 tools/analyze_pilot.py /tmp/preflight_fix/pilot_matrix.log \
+        --expected /tmp/preflight_fix/pilot_expected_tags.txt \
         --json /tmp/preflight_fix/pilot_analysis.json \
         --csv  /tmp/preflight_fix/pilot_summary.csv > /dev/null 2>&1 \
    && python3 tools/gate.py /tmp/preflight_fix/pilot_analysis.json \

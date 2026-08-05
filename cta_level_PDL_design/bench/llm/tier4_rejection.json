@@ -1,0 +1,36 @@
+{
+  "schema": "tier4.semantic-audit.v2",
+  "audit_date_utc": "2026-08-05",
+  "status": "SUPERSEDED_HISTORICAL_REJECTION",
+  "admissible": false,
+  "formal_samples_contributed": 0,
+  "current_state": "READY_FOR_SCHEMA_V2_MODEL_SMOKE_THEN_FORMAL",
+  "target": {
+    "workload": "/workspace/models/Qwen3.6-27B",
+    "engine": "vllm",
+    "pdl_scope": "inductor_generated_full_decode_graph_kernels",
+    "prefill_mode": "production_mixed_mode_non_headline",
+    "graph_mode": "FULL_DECODE_ONLY"
+  },
+  "resolved_initial_blockers": [
+    "MODEL_STAGED_WITH_INDEXED_WEIGHT_INVENTORY",
+    "SAME_PROCESS_PERSISTENT_TRIPLET_DRIVER_IMPLEMENTED",
+    "FRESH_CACHE_PTX_CUBIN_SEMANTICS_PROVEN_IN_SMOKE5",
+    "EXACT_NVTX_CUDA_GRAPH_NODE_JOIN_PROVEN_IN_SMOKE5",
+    "WORKER_SIDE_CEILING_COMPILED_WAIT_FREE",
+    "NSIGHT_SYSTEMS_INSTALLED",
+    "SCHEMA_V2_FAIL_CLOSED_ADMISSION_AND_TAMPER_TESTS_PASS"
+  ],
+  "formal_contract": {
+    "timing_order": "latin3_adjacent_same_process",
+    "repeats_per_rung_per_point": 31,
+    "warmup_triplets_per_point": 3,
+    "bootstrap_samples": 2000,
+    "allow_short_is_formally_admissible": false,
+    "off_grid_exact_token_and_hex_logprob_match_required": true,
+    "ceiling_correctness": "unsafe_not_validated",
+    "model_identity_sha256_bound": true,
+    "nsys_graph_node_proof_required": true
+  },
+  "next_gate": "fresh-root schema-v2 real-model smoke with decode and 4K prefill plumbing"
+}

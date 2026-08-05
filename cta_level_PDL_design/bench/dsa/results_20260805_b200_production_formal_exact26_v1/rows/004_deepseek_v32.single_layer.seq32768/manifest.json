@@ -1,0 +1,1527 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_timing_semantics": "legacy_CTA_bracket_only",
+  "accepted_workload_timing": 0,
+  "allow_short": false,
+  "api_contracts": [
+    {
+      "module": "vllm.model_executor.layers.sparse_attn_indexer",
+      "required_calls": [
+        "ops.indexer_k_quant_and_cache",
+        "ops.cp_gather_indexer_k_quant_cache",
+        "fp8_fp4_mqa_logits",
+        "ops.top_k_per_row_prefill"
+      ],
+      "source": "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/sparse_attn_indexer.py",
+      "stage": "indexer_and_topk",
+      "symbols": [
+        "SparseAttnIndexer",
+        "sparse_attn_indexer"
+      ]
+    },
+    {
+      "module": "flashinfer.mla",
+      "required_kwargs": [
+        "sparse_mla_top_k",
+        "enable_pdl",
+        "backend"
+      ],
+      "source": "/usr/local/lib/python3.12/dist-packages/flashinfer/mla/_core.py",
+      "stage": "sparse_mla",
+      "symbols": [
+        "trtllm_batch_decode_with_kv_cache_mla"
+      ]
+    },
+    {
+      "module": "vllm._custom_ops",
+      "source": "/usr/local/lib/python3.12/dist-packages/vllm/_custom_ops.py",
+      "stage": "mla_cache_insert",
+      "symbols": [
+        "concat_and_cache_mla"
+      ]
+    },
+    {
+      "module": "vllm.model_executor.layers.fused_moe",
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/router/fused_topk_router.py",
+        "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/fused_moe.py"
+      ],
+      "stage": "moe32",
+      "symbols": [
+        "fused_topk",
+        "fused_experts"
+      ]
+    },
+    {
+      "module": "vllm.third_party.deep_gemm",
+      "source": "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/__init__.py",
+      "stage": "indexer_pdl_control",
+      "symbols": [
+        "set_pdl",
+        "get_pdl"
+      ]
+    },
+    {
+      "module": "vllm.utils.deep_gemm",
+      "required_calls": [
+        "clean_logits",
+        "weighted ReLU",
+        "fmaxf(accum[j], 0)"
+      ],
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/vllm/utils/deep_gemm.py",
+        "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/include/deep_gemm/impls/sm100_fp8_mqa_logits.cuh"
+      ],
+      "stage": "indexer_logits_reference",
+      "symbols": [
+        "fp8_fp4_mqa_logits",
+        "calc_diff"
+      ]
+    }
+  ],
+  "argv": [
+    "/usr/bin/python3.12",
+    "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/production_tier5.py",
+    "--output-dir",
+    "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_formal_exact26_v1/rows/004_deepseek_v32.single_layer.seq32768.inprogress.neFFK1",
+    "--publish-target",
+    "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_formal_exact26_v1/rows/004_deepseek_v32.single_layer.seq32768",
+    "--runner-managed-stage",
+    "--backend",
+    "flashinfer",
+    "--required-device-substring",
+    "B200",
+    "--models",
+    "deepseek_v32,glm5",
+    "--seqs",
+    "4096,32768,131072,1048576",
+    "--workloads",
+    "operator_chain,single_layer,indexshare_fsss",
+    "--warmup",
+    "5",
+    "--repeats",
+    "31",
+    "--seed",
+    "20260805",
+    "--max-logits-mb",
+    "2048",
+    "--max-query-chunk",
+    "4096",
+    "--moe-experts",
+    "32",
+    "--moe-topk",
+    "8",
+    "--moe-tokens",
+    "4096",
+    "--execute-gpu",
+    "--expected-gpu-uuid",
+    "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef",
+    "--expected-gpu-index",
+    "0",
+    "--fragment-row-id",
+    "deepseek_v32.single_layer.seq32768",
+    "--fragment-ordinal",
+    "4",
+    "--campaign-contract-sha256",
+    "d4c2d9be4ee93eb8fb3cfca962900d0c2fbd6204799be729ceaa6783db480f83",
+    "--campaign-fingerprint-sha256",
+    "44f66a295049d47c42697aa37f20d3d1427efcc76e95354f6ccf13e7e21b6e74",
+    "--execution-segment-id",
+    "115d0df6-d85d-4827-8880-d81e6acf6d34"
+  ],
+  "argv_sha256": "8bd1ec69671ae14165d215858ab100a68c04f310b25bc3b4d341bab7cef812eb",
+  "backend": "flashinfer",
+  "chunking": {
+    "all_query_rows": true,
+    "causal_pair_sampling": "NONE",
+    "indexer_workload_geometry": "exact_causal_lower_triangle",
+    "max_logits_mb": 2048,
+    "max_query_chunk": 4096,
+    "query_sampling": "NONE"
+  },
+  "correctness_contract": {
+    "attention_reference_row_batch": 32,
+    "attention_reference_sampling": "NONE",
+    "exact_set_difference_role": "diagnostic_not_acceptance",
+    "formula_authority": {
+      "expected_sha256": "66629c2eeca18e419edc76d57fc5c50f761db8de52bbc3f80c747b8bd873b464",
+      "path": "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/include/deep_gemm/impls/sm100_fp8_mqa_logits.cuh",
+      "sha256": "66629c2eeca18e419edc76d57fc5c50f761db8de52bbc3f80c747b8bd873b464",
+      "weighted_relu_lines": "357-374"
+    },
+    "manual_logits_calc_diff_limit_exclusive": 5e-06,
+    "manual_logits_quality_metric": "streamed_fp64_formula_equivalent_to_vllm.utils.deep_gemm.calc_diff",
+    "manual_logits_quality_reduction": {
+      "input_mutation": false,
+      "query_row_batch": 8,
+      "sampling": "NONE",
+      "scope": "all_causal_valid_cells"
+    },
+    "manual_logits_reference": "sum_h(relu(q_fp8_dequant@k_fp8_dequant.T)*weights)",
+    "manual_logits_reference_reuse": "computed_once_per_chunk_and_shared_read_only_across_off_on",
+    "manual_logits_row_calc_diff_limit_exclusive": 0.001,
+    "mode_specific_actual_paths": [
+      "SparseAttnIndexer/top-k",
+      "FlashInfer sparse MLA",
+      "attention layer output when applicable"
+    ],
+    "mode_specific_native_logits_replay": true,
+    "per_mode_untimed_full_reference": true,
+    "topk_reference": "full-N vllm.utils.deep_gemm.fp8_fp4_mqa_logits(clean_logits=False), then causal-valid-cell mask",
+    "topk_tail": "UNSPECIFIED_IGNORED",
+    "topk_valid_prefix": "all min(causal_key_count,index_topk) entries per query",
+    "validated_pdl_modes": [
+      "off",
+      "on"
+    ]
+  },
+  "created_unix_ns": 1785934761559164417,
+  "device": {
+    "compute_capability": "10.0",
+    "cuda_visible_devices_selector": "0",
+    "device_index_inside_visible_set": 0,
+    "driver_version_raw": null,
+    "multi_processor_count": 148,
+    "name": "NVIDIA B200",
+    "process_pid": 706001,
+    "process_start_ticks": 216811387,
+    "query_performed": true,
+    "runtime_ordinal": 0,
+    "runtime_ordinal_zero": true,
+    "torch_cuda_version": "13.0",
+    "total_memory_bytes": 191503007744,
+    "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef",
+    "uuid_source": "torch_nvml_runtime_ordinal_mapping"
+  },
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "0",
+    "TIER5_PRODUCTION_GPU_ALLOWED": "1",
+    "VLLM_SPARSE_INDEXER_MAX_LOGITS_MB": "2048"
+  },
+  "execution_scope": "row_fragment",
+  "expected_gpu_index": 0,
+  "expected_gpu_uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef",
+  "expected_matrix": [
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.operator_chain.seq4096",
+      "seq": 4096,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.single_layer.seq4096",
+      "seq": 4096,
+      "workload": "single_layer"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.indexshare_fsss.seq4096",
+      "seq": 4096,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.operator_chain.seq32768",
+      "seq": 32768,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.single_layer.seq32768",
+      "seq": 32768,
+      "workload": "single_layer"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.indexshare_fsss.seq32768",
+      "seq": 32768,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.operator_chain.seq131072",
+      "seq": 131072,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.single_layer.seq131072",
+      "seq": 131072,
+      "workload": "single_layer"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.indexshare_fsss.seq131072",
+      "seq": 131072,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.operator_chain.seq1048576",
+      "seq": 1048576,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.single_layer.seq1048576",
+      "seq": 1048576,
+      "workload": "single_layer"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.indexshare_fsss.seq1048576",
+      "seq": 1048576,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "framework_default_uncontrolled"
+      ],
+      "row_id": "deepseek_v32.moe32",
+      "seq": null,
+      "workload": "moe32"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.operator_chain.seq4096",
+      "seq": 4096,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.single_layer.seq4096",
+      "seq": 4096,
+      "workload": "single_layer"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.indexshare_fsss.seq4096",
+      "seq": 4096,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.operator_chain.seq32768",
+      "seq": 32768,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.single_layer.seq32768",
+      "seq": 32768,
+      "workload": "single_layer"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.indexshare_fsss.seq32768",
+      "seq": 32768,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.operator_chain.seq131072",
+      "seq": 131072,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.single_layer.seq131072",
+      "seq": 131072,
+      "workload": "single_layer"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.indexshare_fsss.seq131072",
+      "seq": 131072,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.operator_chain.seq1048576",
+      "seq": 1048576,
+      "workload": "operator_chain"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.single_layer.seq1048576",
+      "seq": 1048576,
+      "workload": "single_layer"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "glm5.indexshare_fsss.seq1048576",
+      "seq": 1048576,
+      "workload": "indexshare_fsss"
+    },
+    {
+      "model": "glm5",
+      "pdl_modes": [
+        "framework_default_uncontrolled"
+      ],
+      "row_id": "glm5.moe32",
+      "seq": null,
+      "workload": "moe32"
+    }
+  ],
+  "experiment_contract": {
+    "benchmark_reuse": {
+      "mock_indexer_used": false,
+      "replaced_component": "MockIndexer/fill_random_indices",
+      "replacement": "vLLM SparseAttnIndexer with DeepGEMM logits and vLLM top-k",
+      "reused_contracts": [
+        "FlashInfer sparse MLA tensor layout",
+        "paged BF16 KV cache shape",
+        "production backend invocation dimensions"
+      ],
+      "source": "/workspace/benchmarks/attention_benchmarks/mla_runner.py"
+    },
+    "claim_scope": "production_kernel_characterization_only",
+    "coordinates": {
+      "decision": "whether production DSA stages justify a future CTA wrapper and which stage dominates; this harness cannot choose a CTA mechanism",
+      "dimensions": {
+        "A1": [
+          "adjacent_indexer_topk_mla",
+          "span_4_indexshare_FSSS"
+        ],
+        "A2": [
+          "high_degree_contiguous_indexer_row",
+          "historical_kv_indirection"
+        ]
+      },
+      "gpu_budget": {
+        "cpu_static_validation_minutes": 0,
+        "execution_control": "externally scheduled under the UUID-scoped global lease; the runner never truncates a formal matrix to satisfy a time budget",
+        "formal_execution_budget": "UNBOUNDED_BY_HARNESS"
+      }
+    },
+    "correctness": {
+      "attention_reference": "FP32 gathered sparse softmax/value for every output element",
+      "failure_policy": "any mismatch invalidates every sample in the invocation",
+      "indexer_reference": "FP8-cache-dequantized FP32 row scores; valid/range/uniqueness and kth-score-threshold completeness are mandatory, with exact top-k set difference retained as a diagnostic for boundary ties",
+      "manual_reference_reuse": "one read-only manual logits oracle per chunk; native replay, actual indexer/top-k, MLA, and layer outputs remain mode-specific",
+      "mode_coverage": "exactly off and on for every attention chunk",
+      "moe_reference": "all token/expert assignments and full BF16 expert algebra",
+      "timed_repeat_poison": true,
+      "untimed_reference": "off and on independently for all query rows, every API-defined valid top-k prefix entry, all MLA outputs, and all applicable layer outputs"
+    },
+    "headroom_defined": false,
+    "headroom_pct": null,
+    "pdl_controls": {
+      "indexer": {
+        "api": "vllm.third_party.deep_gemm.set_pdl/get_pdl",
+        "readback_required": true
+      },
+      "sparse_mla": {
+        "api": "flashinfer.mla.trtllm_batch_decode_with_kv_cache_mla(enable_pdl=bool)",
+        "backend": "trtllm-gen"
+      },
+      "topk": {
+        "api": null,
+        "status": "UNAVAILABLE"
+      }
+    },
+    "rungs": {
+      "ceiling": {
+        "available": false,
+        "reason": "closed production APIs expose no truly unordered dependency-free chain",
+        "status": "PARTIAL"
+      },
+      "cta_impl": {
+        "available": false,
+        "reason": "installed production APIs expose no identity-preserving CTA readiness path",
+        "status": "PARTIAL"
+      },
+      "floor": {
+        "available_components": [
+          "indexer_deepgemm",
+          "sparse_mla_flashinfer"
+        ],
+        "label": "production_pdl_on_diagnostic",
+        "missing_components": [
+          "topk_explicit_pdl_control",
+          "worker_binary_proof"
+        ],
+        "status": "PARTIAL"
+      },
+      "ideal": {
+        "status": "NOT_IMPLEMENTED"
+      },
+      "pdl_off_diagnostic": {
+        "available": true,
+        "controls": [
+          "DeepGEMM.set_pdl(False)",
+          "FlashInfer enable_pdl=False"
+        ],
+        "formal_rung": false
+      }
+    },
+    "statistics": {
+      "default_warmup": 5,
+      "minimum_timed_repeats": 31,
+      "pairing": "off/on adjacent in one process; order alternates by repeat",
+      "reported": [
+        "median",
+        "bootstrap_95pct_ci",
+        "paired_median_delta_ci"
+      ]
+    },
+    "tier5_bracket_admitted": false,
+    "workload_semantics": {
+      "indexshare_fsss": "four causally coherent attention-only layers with exactly one production indexer call and the same logical top-k reused by FSSS",
+      "moe32": "production fused_topk plus fused_experts, 32 resident experts, top-8",
+      "operator_chain": "preprojected full-work SparseAttnIndexer/top-k/sparse-MLA",
+      "single_layer": "attention-only DeepSeek/GLM algebra: random exact-shape projections, RMSNorm, RoPE, production MLA cache insertion, coherent causal indexer/KV history, production DSA primitives, W_UV and output projection; no decoder residual or MLP"
+    }
+  },
+  "formal_statistics_requested": true,
+  "fragment": {
+    "campaign_contract_sha256": "d4c2d9be4ee93eb8fb3cfca962900d0c2fbd6204799be729ceaa6783db480f83",
+    "campaign_fingerprint_sha256": "44f66a295049d47c42697aa37f20d3d1427efcc76e95354f6ccf13e7e21b6e74",
+    "derived_row_seed": 20362805,
+    "execution_segment_id": "115d0df6-d85d-4827-8880-d81e6acf6d34",
+    "expected_row_count": 26,
+    "invocation_uuid": "115d0df6-d85d-4827-8880-d81e6acf6d34",
+    "ordinal": 4,
+    "row": {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.single_layer.seq32768",
+      "seq": 32768,
+      "workload": "single_layer"
+    },
+    "row_id": "deepseek_v32.single_layer.seq32768"
+  },
+  "kind": "tier5_production_dsa_manifest",
+  "long_context_execution": {
+    "attention_reference": {
+      "row_batch": 32,
+      "sampling": "NONE",
+      "scope": "all_query_rows_all_sparse_attention_output_elements"
+    },
+    "cuda_cache_release": {
+      "cadence_chunks": 1,
+      "inside_cuda_event_timing": false,
+      "operation": "explicit_del_tensor_locals_then_torch.cuda.empty_cache",
+      "timing_scope": "after_correctness_warmup_and_all_timed_events"
+    },
+    "logits_quality": {
+      "calc_diff_formula": "1-2*sum(x*y)/sum(x*x+y*y)",
+      "invalid_logits_contract": "UNSPECIFIED_IGNORED",
+      "query_row_batch": 8,
+      "reduction": "streamed_query_rows_all_causal_valid_cells",
+      "reduction_dtype": "float64",
+      "row_calc_diff_formula": "1-2*sum_j(x_j*y_j)/sum_j(x_j*x_j+y_j*y_j)",
+      "sampling": "NONE"
+    }
+  },
+  "measurement_emitted": false,
+  "mode": "execute_gpu",
+  "models": [
+    {
+      "architecture": "DeepseekV32ForCausalLM",
+      "attention_heads": 128,
+      "experts_per_token": 8,
+      "hidden_size": 7168,
+      "index_head_dim": 128,
+      "index_heads": 64,
+      "index_topk": 2048,
+      "key": "deepseek_v32",
+      "kv_lora_rank": 512,
+      "label": "DeepSeek-V3.2",
+      "max_position_embeddings": 163840,
+      "moe_intermediate_size": 2048,
+      "num_layers": 61,
+      "q_lora_rank": 1536,
+      "qk_nope_head_dim": 128,
+      "qk_rope_head_dim": 64,
+      "routed_experts_full_model": 256,
+      "v_head_dim": 128
+    },
+    {
+      "architecture": "GlmMoeDsaForCausalLM",
+      "attention_heads": 64,
+      "experts_per_token": 8,
+      "hidden_size": 6144,
+      "index_head_dim": 128,
+      "index_heads": 32,
+      "index_topk": 2048,
+      "key": "glm5",
+      "kv_lora_rank": 512,
+      "label": "GLM-5",
+      "max_position_embeddings": 202752,
+      "moe_intermediate_size": 2048,
+      "num_layers": 78,
+      "q_lora_rank": 2048,
+      "qk_nope_head_dim": 192,
+      "qk_rope_head_dim": 64,
+      "routed_experts_full_model": 256,
+      "v_head_dim": 256
+    }
+  ],
+  "moe": {
+    "experts": 32,
+    "full_model_expert_count": 256,
+    "reduced_expert_claim": "dependency_shape_only",
+    "tokens": 4096,
+    "topk": 8
+  },
+  "packages": {
+    "api_sources": [
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/flashinfer/mla/_core.py",
+        "sha256": "fe05a0fe0bc69597e08e1beeca254835d57b9cf7ce2ab395dadcc83a8289601e",
+        "size_bytes": 61850
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/_custom_ops.py",
+        "sha256": "d52fd5d6d7e97594384f4db5f4b1cd5fe3addfc7785e074a8a789de95849d8d9",
+        "size_bytes": 116270
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/fused_moe.py",
+        "sha256": "57a3f7efc9624f5c437908892ed5109a81ba0dbf45e1c6ac8a1438a23131f207",
+        "size_bytes": 58203
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/router/fused_topk_router.py",
+        "sha256": "2f987099eb0f9ca09bed80ff4371e1a25d95c364c473f15431dea771084d5b95",
+        "size_bytes": 4925
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/sparse_attn_indexer.py",
+        "sha256": "1d1e033f53b778c98f3216c2e9b28297525dfac6994b98f47b260334a4c8b7f6",
+        "size_bytes": 19918
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/models/deepseek_v2.py",
+        "sha256": "640b6e60fbacf859f60caff149015dbfc223dff0baf302c507ddd9009b7726a3",
+        "size_bytes": 67965
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/__init__.py",
+        "sha256": "0e563c954d08b1fcf53f77c6ba403df060fa88571e0959cfab721645ef6c8ae9",
+        "size_bytes": 3588
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/include/deep_gemm/impls/sm100_fp8_mqa_logits.cuh",
+        "sha256": "66629c2eeca18e419edc76d57fc5c50f761db8de52bbc3f80c747b8bd873b464",
+        "size_bytes": 19667
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/utils/deep_gemm.py",
+        "sha256": "977da8e0afa75a9dadfe0b7e0845dac427869f4d110474803ed98bc1c7485c86",
+        "size_bytes": 19918
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/v1/attention/backends/mla/flashinfer_mla_sparse.py",
+        "sha256": "b9c82e6c05abd9f72706ceb7472c7a89f009c1aaec30d7cc6026f5db9ace9b65",
+        "size_bytes": 12423
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/v1/attention/backends/mla/indexer.py",
+        "sha256": "ce0eb5302518da7867a004683517b164e4227a054226c2d2ab9b86320850473a",
+        "size_bytes": 30168
+      }
+    ],
+    "artifacts": [
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/_C.abi3.so",
+        "sha256": "0e018c2cbfe1ddcde9114a6ca4ad31d029c5c8ab634dab6b4ae9e49cdffdf7d3",
+        "size_bytes": 43324944
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/_flashmla_C.abi3.so",
+        "sha256": "1157d3c2e4e2380041358511376d1df637b7b637a61e30f5e150a7ecb7374579",
+        "size_bytes": 1824624
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/_flashmla_extension_C.abi3.so",
+        "sha256": "7580b29019f945eb73909c3deb995ac83904a9db1f49659ff7f7556b3266ef5a",
+        "size_bytes": 257248
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/_moe_C.abi3.so",
+        "sha256": "ccb3d0d0cc12e25f7733d4359860171a85bebb7440d55ac477094c7700916c5f",
+        "size_bytes": 45263344
+      },
+      {
+        "exists": true,
+        "path": "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/_C.cpython-312-x86_64-linux-gnu.so",
+        "sha256": "3d1bacae595f733e8ecc5ac9e10121655d5a0103dc1a918ef8c0f93c0a53aa63",
+        "size_bytes": 1401152
+      }
+    ],
+    "binary_hash_policy": "sha256_during_explicit_gpu_execution",
+    "distributions": [
+      {
+        "direct_url": {
+          "archive_info": {},
+          "url": "file:///vllm-workspace/dist/vllm-0.23.0-cp38-abi3-linux_x86_64.whl"
+        },
+        "installed": true,
+        "metadata_path": "/usr/local/lib/python3.12/dist-packages/vllm-0.23.0.dist-info",
+        "name": "vllm",
+        "version": "0.23.0"
+      },
+      {
+        "direct_url": null,
+        "installed": true,
+        "metadata_path": "/usr/local/lib/python3.12/dist-packages/torch-2.11.0+cu130.dist-info",
+        "name": "torch",
+        "version": "2.11.0+cu130"
+      },
+      {
+        "direct_url": null,
+        "installed": true,
+        "metadata_path": "/usr/local/lib/python3.12/dist-packages/flashinfer_python-0.6.12.dist-info",
+        "name": "flashinfer-python",
+        "version": "0.6.12"
+      },
+      {
+        "direct_url": null,
+        "installed": true,
+        "metadata_path": "/usr/local/lib/python3.12/dist-packages/flashinfer_cubin-0.6.12.dist-info",
+        "name": "flashinfer-cubin",
+        "version": "0.6.12"
+      },
+      {
+        "direct_url": null,
+        "installed": true,
+        "metadata_path": "/usr/local/lib/python3.12/dist-packages/triton-3.6.0.dist-info",
+        "name": "triton",
+        "version": "3.6.0"
+      },
+      {
+        "direct_url": null,
+        "installed": true,
+        "metadata_path": "/usr/local/lib/python3.12/dist-packages/tilelang-0.1.9.dist-info",
+        "name": "tilelang",
+        "version": "0.1.9"
+      },
+      {
+        "direct_url": null,
+        "installed": true,
+        "metadata_path": "/usr/local/lib/python3.12/dist-packages/transformers-5.12.0.dist-info",
+        "name": "transformers",
+        "version": "5.12.0"
+      }
+    ]
+  },
+  "publication": {
+    "execution_output_dir": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_formal_exact26_v1/rows/004_deepseek_v32.single_layer.seq32768.inprogress.neFFK1",
+    "failure_atomic_stage": true,
+    "requested_publish_target": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_formal_exact26_v1/rows/004_deepseek_v32.single_layer.seq32768",
+    "runner_managed_stage": true
+  },
+  "random_seed": 20260805,
+  "random_weights": true,
+  "repeats": 31,
+  "required_device_substring": "B200",
+  "schema": 1,
+  "seqs": [
+    4096,
+    32768,
+    131072,
+    1048576
+  ],
+  "shape_records": [
+    {
+      "all_query_rows": 4096,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 8390656,
+      "chunk_pair_partition_verified": true,
+      "extreme": false,
+      "extreme_reason": null,
+      "indexer_causal_fma_flops": 137472507904,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 8390656,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "DeepSeek-V3.2",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "deepseek_v32",
+      "num_query_chunks": 1,
+      "official_max_position_embeddings": 163840,
+      "query_chunk_tokens": 4096,
+      "query_sampling": "NONE",
+      "seq": 4096,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 402128896,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 67108864,
+        "hidden_bf16_chunk": 58720256,
+        "index_q_fp8_chunk": 33554432,
+        "index_weights_fp32_chunk": 1048576,
+        "indexer_cache": 540672,
+        "indexer_k_history_bf16": 1048576,
+        "indexer_slot_mapping_i64": 32768,
+        "indexer_token_to_seq_i32": 16384,
+        "indexer_workspace_capacity": 21626880,
+        "indexshare_four_layer_mla_caches_bf16": 18874368,
+        "indexshare_four_layer_weights_bf16": 1608515584,
+        "mla_bf16_cache": 4718592,
+        "mla_output_bf16_chunk": 536870912,
+        "mla_query_bf16_chunk": 603979776,
+        "moe32_weights_bf16": 2818572288,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 58720256,
+        "topk_indices_i32_chunk": 33554432
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.374512,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 0.0625,
+        "hidden_bf16_chunk": 0.054688,
+        "index_q_fp8_chunk": 0.03125,
+        "index_weights_fp32_chunk": 0.000977,
+        "indexer_cache": 0.000504,
+        "indexer_k_history_bf16": 0.000977,
+        "indexer_slot_mapping_i64": 3.1e-05,
+        "indexer_token_to_seq_i32": 1.5e-05,
+        "indexer_workspace_capacity": 0.020142,
+        "indexshare_four_layer_mla_caches_bf16": 0.017578,
+        "indexshare_four_layer_weights_bf16": 1.498047,
+        "mla_bf16_cache": 0.004395,
+        "mla_output_bf16_chunk": 0.5,
+        "mla_query_bf16_chunk": 0.5625,
+        "moe32_weights_bf16": 2.625,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.054688,
+        "topk_indices_i32_chunk": 0.03125
+      },
+      "within_official_position_range": true
+    },
+    {
+      "all_query_rows": 32768,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 536887296,
+      "chunk_pair_partition_verified": true,
+      "extreme": false,
+      "extreme_reason": null,
+      "indexer_causal_fma_flops": 8796361457664,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 536887296,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "DeepSeek-V3.2",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "deepseek_v32",
+      "num_query_chunks": 8,
+      "official_max_position_embeddings": 163840,
+      "query_chunk_tokens": 4096,
+      "query_sampling": "NONE",
+      "seq": 32768,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 402128896,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 536870912,
+        "hidden_bf16_chunk": 58720256,
+        "index_q_fp8_chunk": 33554432,
+        "index_weights_fp32_chunk": 1048576,
+        "indexer_cache": 4325376,
+        "indexer_k_history_bf16": 8388608,
+        "indexer_slot_mapping_i64": 262144,
+        "indexer_token_to_seq_i32": 131072,
+        "indexer_workspace_capacity": 173015040,
+        "indexshare_four_layer_mla_caches_bf16": 150994944,
+        "indexshare_four_layer_weights_bf16": 1608515584,
+        "mla_bf16_cache": 37748736,
+        "mla_output_bf16_chunk": 536870912,
+        "mla_query_bf16_chunk": 603979776,
+        "moe32_weights_bf16": 2818572288,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 58720256,
+        "topk_indices_i32_chunk": 33554432
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.374512,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 0.5,
+        "hidden_bf16_chunk": 0.054688,
+        "index_q_fp8_chunk": 0.03125,
+        "index_weights_fp32_chunk": 0.000977,
+        "indexer_cache": 0.004028,
+        "indexer_k_history_bf16": 0.007812,
+        "indexer_slot_mapping_i64": 0.000244,
+        "indexer_token_to_seq_i32": 0.000122,
+        "indexer_workspace_capacity": 0.161133,
+        "indexshare_four_layer_mla_caches_bf16": 0.140625,
+        "indexshare_four_layer_weights_bf16": 1.498047,
+        "mla_bf16_cache": 0.035156,
+        "mla_output_bf16_chunk": 0.5,
+        "mla_query_bf16_chunk": 0.5625,
+        "moe32_weights_bf16": 2.625,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.054688,
+        "topk_indices_i32_chunk": 0.03125
+      },
+      "within_official_position_range": true
+    },
+    {
+      "all_query_rows": 131072,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 8590000128,
+      "chunk_pair_partition_verified": true,
+      "extreme": false,
+      "extreme_reason": null,
+      "indexer_causal_fma_flops": 140738562097152,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 8590000128,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "DeepSeek-V3.2",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "deepseek_v32",
+      "num_query_chunks": 32,
+      "official_max_position_embeddings": 163840,
+      "query_chunk_tokens": 4096,
+      "query_sampling": "NONE",
+      "seq": 131072,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 402128896,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 2147483648,
+        "hidden_bf16_chunk": 58720256,
+        "index_q_fp8_chunk": 33554432,
+        "index_weights_fp32_chunk": 1048576,
+        "indexer_cache": 17301504,
+        "indexer_k_history_bf16": 33554432,
+        "indexer_slot_mapping_i64": 1048576,
+        "indexer_token_to_seq_i32": 524288,
+        "indexer_workspace_capacity": 692060160,
+        "indexshare_four_layer_mla_caches_bf16": 603979776,
+        "indexshare_four_layer_weights_bf16": 1608515584,
+        "mla_bf16_cache": 150994944,
+        "mla_output_bf16_chunk": 536870912,
+        "mla_query_bf16_chunk": 603979776,
+        "moe32_weights_bf16": 2818572288,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 58720256,
+        "topk_indices_i32_chunk": 33554432
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.374512,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 2.0,
+        "hidden_bf16_chunk": 0.054688,
+        "index_q_fp8_chunk": 0.03125,
+        "index_weights_fp32_chunk": 0.000977,
+        "indexer_cache": 0.016113,
+        "indexer_k_history_bf16": 0.03125,
+        "indexer_slot_mapping_i64": 0.000977,
+        "indexer_token_to_seq_i32": 0.000488,
+        "indexer_workspace_capacity": 0.644531,
+        "indexshare_four_layer_mla_caches_bf16": 0.5625,
+        "indexshare_four_layer_weights_bf16": 1.498047,
+        "mla_bf16_cache": 0.140625,
+        "mla_output_bf16_chunk": 0.5,
+        "mla_query_bf16_chunk": 0.5625,
+        "moe32_weights_bf16": 2.625,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.054688,
+        "topk_indices_i32_chunk": 0.03125
+      },
+      "within_official_position_range": true
+    },
+    {
+      "all_query_rows": 1048576,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 549756338176,
+      "chunk_pair_partition_verified": true,
+      "extreme": true,
+      "extreme_reason": "one_million_tokens_outside_official_position_range",
+      "indexer_causal_fma_flops": 9007207844675584,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 549756338176,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "DeepSeek-V3.2",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "deepseek_v32",
+      "num_query_chunks": 2048,
+      "official_max_position_embeddings": 163840,
+      "query_chunk_tokens": 512,
+      "query_sampling": "NONE",
+      "seq": 1048576,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 402128896,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 2147483648,
+        "hidden_bf16_chunk": 7340032,
+        "index_q_fp8_chunk": 4194304,
+        "index_weights_fp32_chunk": 131072,
+        "indexer_cache": 138412032,
+        "indexer_k_history_bf16": 268435456,
+        "indexer_slot_mapping_i64": 8388608,
+        "indexer_token_to_seq_i32": 4194304,
+        "indexer_workspace_capacity": 5536481280,
+        "indexshare_four_layer_mla_caches_bf16": 4831838208,
+        "indexshare_four_layer_weights_bf16": 1608515584,
+        "mla_bf16_cache": 1207959552,
+        "mla_output_bf16_chunk": 67108864,
+        "mla_query_bf16_chunk": 75497472,
+        "moe32_weights_bf16": 2818572288,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 58720256,
+        "topk_indices_i32_chunk": 4194304
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.374512,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 2.0,
+        "hidden_bf16_chunk": 0.006836,
+        "index_q_fp8_chunk": 0.003906,
+        "index_weights_fp32_chunk": 0.000122,
+        "indexer_cache": 0.128906,
+        "indexer_k_history_bf16": 0.25,
+        "indexer_slot_mapping_i64": 0.007812,
+        "indexer_token_to_seq_i32": 0.003906,
+        "indexer_workspace_capacity": 5.15625,
+        "indexshare_four_layer_mla_caches_bf16": 4.5,
+        "indexshare_four_layer_weights_bf16": 1.498047,
+        "mla_bf16_cache": 1.125,
+        "mla_output_bf16_chunk": 0.0625,
+        "mla_query_bf16_chunk": 0.070312,
+        "moe32_weights_bf16": 2.625,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.054688,
+        "topk_indices_i32_chunk": 0.003906
+      },
+      "within_official_position_range": false
+    },
+    {
+      "all_query_rows": 4096,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 8390656,
+      "chunk_pair_partition_verified": true,
+      "extreme": false,
+      "extreme_reason": null,
+      "indexer_causal_fma_flops": 68736253952,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 8390656,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "GLM-5",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "glm5",
+      "num_query_chunks": 1,
+      "official_max_position_embeddings": 202752,
+      "query_chunk_tokens": 4096,
+      "query_sampling": "NONE",
+      "seq": 4096,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 348782592,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 67108864,
+        "hidden_bf16_chunk": 50331648,
+        "index_q_fp8_chunk": 16777216,
+        "index_weights_fp32_chunk": 524288,
+        "indexer_cache": 540672,
+        "indexer_k_history_bf16": 1048576,
+        "indexer_slot_mapping_i64": 32768,
+        "indexer_token_to_seq_i32": 16384,
+        "indexer_workspace_capacity": 21626880,
+        "indexshare_four_layer_mla_caches_bf16": 18874368,
+        "indexshare_four_layer_weights_bf16": 1395130368,
+        "mla_bf16_cache": 4718592,
+        "mla_output_bf16_chunk": 268435456,
+        "mla_query_bf16_chunk": 301989888,
+        "moe32_weights_bf16": 2415919104,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 50331648,
+        "topk_indices_i32_chunk": 33554432
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.324829,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 0.0625,
+        "hidden_bf16_chunk": 0.046875,
+        "index_q_fp8_chunk": 0.015625,
+        "index_weights_fp32_chunk": 0.000488,
+        "indexer_cache": 0.000504,
+        "indexer_k_history_bf16": 0.000977,
+        "indexer_slot_mapping_i64": 3.1e-05,
+        "indexer_token_to_seq_i32": 1.5e-05,
+        "indexer_workspace_capacity": 0.020142,
+        "indexshare_four_layer_mla_caches_bf16": 0.017578,
+        "indexshare_four_layer_weights_bf16": 1.299316,
+        "mla_bf16_cache": 0.004395,
+        "mla_output_bf16_chunk": 0.25,
+        "mla_query_bf16_chunk": 0.28125,
+        "moe32_weights_bf16": 2.25,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.046875,
+        "topk_indices_i32_chunk": 0.03125
+      },
+      "within_official_position_range": true
+    },
+    {
+      "all_query_rows": 32768,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 536887296,
+      "chunk_pair_partition_verified": true,
+      "extreme": false,
+      "extreme_reason": null,
+      "indexer_causal_fma_flops": 4398180728832,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 536887296,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "GLM-5",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "glm5",
+      "num_query_chunks": 8,
+      "official_max_position_embeddings": 202752,
+      "query_chunk_tokens": 4096,
+      "query_sampling": "NONE",
+      "seq": 32768,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 348782592,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 536870912,
+        "hidden_bf16_chunk": 50331648,
+        "index_q_fp8_chunk": 16777216,
+        "index_weights_fp32_chunk": 524288,
+        "indexer_cache": 4325376,
+        "indexer_k_history_bf16": 8388608,
+        "indexer_slot_mapping_i64": 262144,
+        "indexer_token_to_seq_i32": 131072,
+        "indexer_workspace_capacity": 173015040,
+        "indexshare_four_layer_mla_caches_bf16": 150994944,
+        "indexshare_four_layer_weights_bf16": 1395130368,
+        "mla_bf16_cache": 37748736,
+        "mla_output_bf16_chunk": 268435456,
+        "mla_query_bf16_chunk": 301989888,
+        "moe32_weights_bf16": 2415919104,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 50331648,
+        "topk_indices_i32_chunk": 33554432
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.324829,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 0.5,
+        "hidden_bf16_chunk": 0.046875,
+        "index_q_fp8_chunk": 0.015625,
+        "index_weights_fp32_chunk": 0.000488,
+        "indexer_cache": 0.004028,
+        "indexer_k_history_bf16": 0.007812,
+        "indexer_slot_mapping_i64": 0.000244,
+        "indexer_token_to_seq_i32": 0.000122,
+        "indexer_workspace_capacity": 0.161133,
+        "indexshare_four_layer_mla_caches_bf16": 0.140625,
+        "indexshare_four_layer_weights_bf16": 1.299316,
+        "mla_bf16_cache": 0.035156,
+        "mla_output_bf16_chunk": 0.25,
+        "mla_query_bf16_chunk": 0.28125,
+        "moe32_weights_bf16": 2.25,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.046875,
+        "topk_indices_i32_chunk": 0.03125
+      },
+      "within_official_position_range": true
+    },
+    {
+      "all_query_rows": 131072,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 8590000128,
+      "chunk_pair_partition_verified": true,
+      "extreme": false,
+      "extreme_reason": null,
+      "indexer_causal_fma_flops": 70369281048576,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 8590000128,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "GLM-5",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "glm5",
+      "num_query_chunks": 32,
+      "official_max_position_embeddings": 202752,
+      "query_chunk_tokens": 4096,
+      "query_sampling": "NONE",
+      "seq": 131072,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 348782592,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 2147483648,
+        "hidden_bf16_chunk": 50331648,
+        "index_q_fp8_chunk": 16777216,
+        "index_weights_fp32_chunk": 524288,
+        "indexer_cache": 17301504,
+        "indexer_k_history_bf16": 33554432,
+        "indexer_slot_mapping_i64": 1048576,
+        "indexer_token_to_seq_i32": 524288,
+        "indexer_workspace_capacity": 692060160,
+        "indexshare_four_layer_mla_caches_bf16": 603979776,
+        "indexshare_four_layer_weights_bf16": 1395130368,
+        "mla_bf16_cache": 150994944,
+        "mla_output_bf16_chunk": 268435456,
+        "mla_query_bf16_chunk": 301989888,
+        "moe32_weights_bf16": 2415919104,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 50331648,
+        "topk_indices_i32_chunk": 33554432
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.324829,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 2.0,
+        "hidden_bf16_chunk": 0.046875,
+        "index_q_fp8_chunk": 0.015625,
+        "index_weights_fp32_chunk": 0.000488,
+        "indexer_cache": 0.016113,
+        "indexer_k_history_bf16": 0.03125,
+        "indexer_slot_mapping_i64": 0.000977,
+        "indexer_token_to_seq_i32": 0.000488,
+        "indexer_workspace_capacity": 0.644531,
+        "indexshare_four_layer_mla_caches_bf16": 0.5625,
+        "indexshare_four_layer_weights_bf16": 1.299316,
+        "mla_bf16_cache": 0.140625,
+        "mla_output_bf16_chunk": 0.25,
+        "mla_query_bf16_chunk": 0.28125,
+        "moe32_weights_bf16": 2.25,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.046875,
+        "topk_indices_i32_chunk": 0.03125
+      },
+      "within_official_position_range": true
+    },
+    {
+      "all_query_rows": 1048576,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pair_formula": "count*(2*start+count+1)/2",
+      "chunk_causal_pairs_sum": 549756338176,
+      "chunk_pair_partition_verified": true,
+      "extreme": true,
+      "extreme_reason": "one_million_tokens_outside_official_position_range",
+      "indexer_causal_fma_flops": 4503603922337792,
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs": 549756338176,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "label": "GLM-5",
+      "memory_accounting_note": "explicit resident tensors and named workspaces; not an allocator-peak claim",
+      "model": "glm5",
+      "num_query_chunks": 2048,
+      "official_max_position_embeddings": 202752,
+      "query_chunk_tokens": 512,
+      "query_sampling": "NONE",
+      "seq": 1048576,
+      "tensor_bytes": {
+        "attention_layer_weights_bf16": 348782592,
+        "flashinfer_workspace": 134217728,
+        "fp32_logits_chunk": 2147483648,
+        "hidden_bf16_chunk": 6291456,
+        "index_q_fp8_chunk": 2097152,
+        "index_weights_fp32_chunk": 65536,
+        "indexer_cache": 138412032,
+        "indexer_k_history_bf16": 268435456,
+        "indexer_slot_mapping_i64": 8388608,
+        "indexer_token_to_seq_i32": 4194304,
+        "indexer_workspace_capacity": 5536481280,
+        "indexshare_four_layer_mla_caches_bf16": 4831838208,
+        "indexshare_four_layer_weights_bf16": 1395130368,
+        "mla_bf16_cache": 1207959552,
+        "mla_output_bf16_chunk": 33554432,
+        "mla_query_bf16_chunk": 37748736,
+        "moe32_weights_bf16": 2415919104,
+        "moe_router_fp32_base_and_epoch_delta": 1048576,
+        "moe_tokens_bf16": 50331648,
+        "topk_indices_i32_chunk": 4194304
+      },
+      "tensor_gib": {
+        "attention_layer_weights_bf16": 0.324829,
+        "flashinfer_workspace": 0.125,
+        "fp32_logits_chunk": 2.0,
+        "hidden_bf16_chunk": 0.005859,
+        "index_q_fp8_chunk": 0.001953,
+        "index_weights_fp32_chunk": 6.1e-05,
+        "indexer_cache": 0.128906,
+        "indexer_k_history_bf16": 0.25,
+        "indexer_slot_mapping_i64": 0.007812,
+        "indexer_token_to_seq_i32": 0.003906,
+        "indexer_workspace_capacity": 5.15625,
+        "indexshare_four_layer_mla_caches_bf16": 4.5,
+        "indexshare_four_layer_weights_bf16": 1.299316,
+        "mla_bf16_cache": 1.125,
+        "mla_output_bf16_chunk": 0.03125,
+        "mla_query_bf16_chunk": 0.035156,
+        "moe32_weights_bf16": 2.25,
+        "moe_router_fp32_base_and_epoch_delta": 0.000977,
+        "moe_tokens_bf16": 0.046875,
+        "topk_indices_i32_chunk": 0.003906
+      },
+      "within_official_position_range": false
+    }
+  ],
+  "sources": [
+    {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/production_tier5.py",
+      "sha256": "c33801fbd9d3878ef6beb42e55d91166fa88bf69ffd6b4afa91d514ba85f4442",
+      "size_bytes": 135171
+    },
+    {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/validate_production_tier5.py",
+      "sha256": "b5ec90b014305d69b0c2dee528c5e9d87abf6d2fb27778851d0dfb676ef097be",
+      "size_bytes": 94249
+    },
+    {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/run_production_tier5.sh",
+      "sha256": "da76b4799e75a6c6b624a0569543e38ae99cfd8f62996820653268fcb9134638",
+      "size_bytes": 15917
+    },
+    {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/production_tier5_campaign.py",
+      "sha256": "0a112411fc591920cd143d1ea2e896600799e5f7350345ef4fc7392d8a07fbbc",
+      "size_bytes": 60216
+    },
+    {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/run_production_tier5_fragments.sh",
+      "sha256": "52a2ee7919c9a744fba4dfd15f7cc97cc86bbb4644d892ab37e6ab86bec03d4a",
+      "size_bytes": 28450
+    },
+    {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/run_production_tier5_nsys_sidecar.sh",
+      "sha256": "9ce0310803cf68643910718c26d919c4655cc3b0d7155571601ee76fcc9a17db",
+      "size_bytes": 8196
+    },
+    {
+      "exists": true,
+      "path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/gpu_exclusivity.py",
+      "sha256": "0b7c9509703cbddd8d2cb6868a659200c9bfd17656235b7139943ac7dc1622b9",
+      "size_bytes": 32332
+    },
+    {
+      "exists": true,
+      "path": "/workspace/benchmarks/attention_benchmarks/mla_runner.py",
+      "sha256": "a541329e357c1c2d7e37682696295a326c4ea0aaae5926de87d5679298c67155",
+      "size_bytes": 38268
+    },
+    {
+      "exists": true,
+      "path": "/workspace/benchmarks/attention_benchmarks/common.py",
+      "sha256": "8924c04cd16c24e9d9391eed97eed700ef8a2fe8004cf2172780863aad476ddb",
+      "size_bytes": 16253
+    },
+    {
+      "exists": true,
+      "path": "/workspace/benchmarks/kernels/benchmark_moe.py",
+      "sha256": "b383089a90fe998b69765d1f27dae0ee7d9d4186d16fc1f2c1ba1aac0340ded5",
+      "size_bytes": 36579
+    }
+  ],
+  "static_api_checks": [
+    {
+      "missing_tokens": [],
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/sparse_attn_indexer.py"
+      ],
+      "stage": "indexer_and_topk",
+      "status": "PASS",
+      "tokens": [
+        "SparseAttnIndexer",
+        "sparse_attn_indexer",
+        "ops.indexer_k_quant_and_cache",
+        "ops.cp_gather_indexer_k_quant_cache",
+        "fp8_fp4_mqa_logits",
+        "ops.top_k_per_row_prefill"
+      ]
+    },
+    {
+      "missing_tokens": [],
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/flashinfer/mla/_core.py"
+      ],
+      "stage": "sparse_mla",
+      "status": "PASS",
+      "tokens": [
+        "trtllm_batch_decode_with_kv_cache_mla",
+        "sparse_mla_top_k",
+        "enable_pdl",
+        "backend"
+      ]
+    },
+    {
+      "missing_tokens": [],
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/vllm/_custom_ops.py"
+      ],
+      "stage": "mla_cache_insert",
+      "status": "PASS",
+      "tokens": [
+        "concat_and_cache_mla"
+      ]
+    },
+    {
+      "missing_tokens": [],
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/router/fused_topk_router.py",
+        "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/fused_moe.py"
+      ],
+      "stage": "moe32",
+      "status": "PASS",
+      "tokens": [
+        "fused_topk",
+        "fused_experts"
+      ]
+    },
+    {
+      "missing_tokens": [],
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/__init__.py"
+      ],
+      "stage": "indexer_pdl_control",
+      "status": "PASS",
+      "tokens": [
+        "set_pdl",
+        "get_pdl"
+      ]
+    },
+    {
+      "missing_tokens": [],
+      "sources": [
+        "/usr/local/lib/python3.12/dist-packages/vllm/utils/deep_gemm.py",
+        "/usr/local/lib/python3.12/dist-packages/vllm/third_party/deep_gemm/include/deep_gemm/impls/sm100_fp8_mqa_logits.cuh"
+      ],
+      "stage": "indexer_logits_reference",
+      "status": "PASS",
+      "tokens": [
+        "fp8_fp4_mqa_logits",
+        "calc_diff",
+        "clean_logits",
+        "weighted ReLU",
+        "fmaxf(accum[j], 0)"
+      ]
+    }
+  ],
+  "status": "RUNNING",
+  "warmup": 5,
+  "workloads": [
+    "operator_chain",
+    "single_layer",
+    "indexshare_fsss"
+  ]
+}

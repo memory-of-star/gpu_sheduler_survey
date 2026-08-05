@@ -1,0 +1,4 @@
+INFO 08-05 12:59:42 [scheduler.py:239] Chunked prefill is enabled with max_num_batched_tokens=2048.
+INFO 08-05 12:59:42 [vllm.py:999] Asynchronous scheduling is enabled.
+INFO 08-05 12:59:42 [kernel.py:270] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+PRODUCTION_TIER5_CANDIDATE schema=1 samples=62 status=CANDIDATE accepted_timing=0 bracket=PARTIAL

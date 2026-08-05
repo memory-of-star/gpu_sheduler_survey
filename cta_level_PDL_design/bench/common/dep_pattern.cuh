@@ -21,6 +21,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 enum DepStructure {
     DEP_INTERVAL = 0,  // parents form ONE contiguous range  -> encodable as [lo,hi], O(1)
@@ -70,6 +71,16 @@ __host__ __device__ __forceinline__ unsigned int dep_hash(unsigned int x) {
     x ^= x >> 15; x *= 0x846ca68bu;
     x ^= x >> 16;
     return x;
+}
+
+__host__ __device__ __forceinline__ unsigned int dep_gcd(unsigned int a,
+                                                          unsigned int b) {
+    while (b != 0u) {
+        unsigned int r = a % b;
+        a = b;
+        b = r;
+    }
+    return a;
 }
 
 // Number of parents of `child`.
@@ -128,10 +139,40 @@ __host__ __device__ __forceinline__ int dep_parent(const DepPattern& p, int chil
 
         case DEP_RANDOM:
         default: {
-            unsigned int h = dep_hash(((unsigned int)child << 16) ^ (unsigned int)k ^ p.seed);
-            return (int)(h % (unsigned int)P);
+            // Generate a per-child affine permutation modulo P and take its first d
+            // elements. A raw hash(k) % P can collide, silently making the actual
+            // dependency degree smaller than requested. A step coprime with P makes
+            // k -> offset + k*step a permutation (AGENTS.md validity rule 10).
+            if (P == 1) return 0;
+            unsigned int up = (unsigned int)P;
+            unsigned int offset = dep_hash((unsigned int)child ^ p.seed) % up;
+            unsigned int step = 1u + dep_hash((unsigned int)child * 0x9e3779b9u ^
+                                               p.seed ^ 0xa511e9b3u) % (up - 1u);
+            while (dep_gcd(step, up) != 1u) {
+                ++step;
+                if (step >= up) step = 1u;
+            }
+            return (int)(((unsigned long long)offset +
+                          (unsigned long long)(unsigned int)k * step) % up);
         }
     }
+}
+
+// Host-side audit helper. The pilot calls this before spending GPU time so a future
+// pattern change cannot re-introduce duplicate parents without failing loudly.
+__host__ inline bool dep_parents_are_unique(const DepPattern& p) {
+    if (p.n_producer <= 0 || p.n_consumer <= 0) return false;
+    std::vector<int> seen((size_t)p.n_producer, -1);
+    for (int child = 0; child < p.n_consumer; ++child) {
+        int d = dep_degree(p, child);
+        for (int i = 0; i < d; ++i) {
+            int a = dep_parent(p, child, i);
+            if (a < 0 || a >= p.n_producer) return false;
+            if (seen[(size_t)a] == child) return false;
+            seen[(size_t)a] = child;
+        }
+    }
+    return true;
 }
 
 // Conservative [lo,hi] cover of the parent set — what an interval-encoded implementation

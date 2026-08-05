@@ -1,0 +1,24 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "campaign_contract_file_sha256": "13126551d1cae34e90aeab8ec54b8cc5d8022c12e56f4179216e17122180a2ed",
+  "campaign_contract_sha256": "d4c2d9be4ee93eb8fb3cfca962900d0c2fbd6204799be729ceaa6783db480f83",
+  "campaign_fingerprint_sha256": "44f66a295049d47c42697aa37f20d3d1427efcc76e95354f6ccf13e7e21b6e74",
+  "completed_fragment_count_before_rejection": 9,
+  "failed_row_id": "deepseek_v32.operator_chain.seq1048576",
+  "kind": "tier5_production_campaign_rejection",
+  "reason": "operational_partition_superseded_after_2048_MiB_full_N_logits_budget_forced_2048_query_chunks_at_1M",
+  "rejected_at_utc": "2026-08-05T13:39:03Z",
+  "rejected_segment_invocation_uuid": "a941e7c2-2f00-4bfa-b8b4-3aafb1513443",
+  "rejected_segment_reason": "runner_interrupted_or_unhandled_failure_rc_130",
+  "schema": 1,
+  "sealed_fragment_timing_reusable": false,
+  "status": "REJECTED",
+  "superseded_controls": {
+    "max_logits_mb": 2048,
+    "max_query_chunk": 4096,
+    "one_million_query_chunk_tokens": 512,
+    "one_million_query_chunks": 2048
+  }
+}

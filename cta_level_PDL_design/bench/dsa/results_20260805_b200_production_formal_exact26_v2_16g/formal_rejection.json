@@ -1,0 +1,30 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "campaign_contract_file_sha256": "1dda28f6dde3e6503d7c99030cb8d2819b9da072098616fa7bb1e3949ba54a1b",
+  "campaign_contract_sha256": "3a56f9e03ecd00f380f52f7f556f95956b1cf9d52058df84b558f763c701da2b",
+  "campaign_fingerprint_sha256": "6eedb57203a08917ec487070e0b6c0882c39a9f3de3400697e3acc3e70a09467",
+  "completed_fragment_count_before_rejection": 9,
+  "failed_row_id": "deepseek_v32.operator_chain.seq1048576",
+  "kind": "tier5_production_campaign_rejection",
+  "reason": "user_requested_compact_formal_within_one_hour",
+  "rejected_at_utc": "2026-08-05T14:13:28Z",
+  "rejected_segment_invocation_uuid": "5dac09b1-e341-4068-b630-71bc4fbb86e7",
+  "rejected_segment_reason": "runner_interrupted_or_unhandled_failure_rc_130",
+  "schema": 1,
+  "sealed_fragment_timing_reusable": false,
+  "status": "REJECTED",
+  "superseded_by": {
+    "campaign_scope": "two_models_two_contexts_all_workloads_plus_moe",
+    "formal_name": "compact_formal",
+    "included_sequence_lengths": [
+      4096,
+      131072
+    ],
+    "timing_excluded_sequence_lengths": [
+      32768,
+      1048576
+    ]
+  }
+}

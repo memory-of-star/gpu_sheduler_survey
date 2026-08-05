@@ -1,0 +1,11 @@
+TIER5_CAMPAIGN_CONTRACT status=PASS rows=26 formal=1 sha256=d4c2d9be4ee93eb8fb3cfca962900d0c2fbd6204799be729ceaa6783db480f83
+[2026-08-05T12:58:25Z] sealed row=deepseek_v32.operator_chain.seq4096 ordinal=0 invocation=14376ad0-b3d3-4652-95a9-843dae3525a9
+[2026-08-05T12:58:37Z] sealed row=deepseek_v32.single_layer.seq4096 ordinal=1 invocation=89f9c8c4-d07a-41ab-96c9-cea1aaeb21a9
+[2026-08-05T12:58:51Z] sealed row=deepseek_v32.indexshare_fsss.seq4096 ordinal=2 invocation=51d299b4-b46a-47e5-9bf8-1ae557ade402
+[2026-08-05T12:59:13Z] sealed row=deepseek_v32.operator_chain.seq32768 ordinal=3 invocation=c3996225-262f-469a-9ed6-60ae7f390d87
+[2026-08-05T12:59:35Z] sealed row=deepseek_v32.single_layer.seq32768 ordinal=4 invocation=115d0df6-d85d-4827-8880-d81e6acf6d34
+[2026-08-05T13:00:13Z] sealed row=deepseek_v32.indexshare_fsss.seq32768 ordinal=5 invocation=59a1cfe3-e201-498c-9da9-7133efe20f1c
+[2026-08-05T13:01:28Z] sealed row=deepseek_v32.operator_chain.seq131072 ordinal=6 invocation=b86b6545-3381-455a-bcb3-a93501fbe9b5
+[2026-08-05T13:02:32Z] sealed row=deepseek_v32.single_layer.seq131072 ordinal=7 invocation=bd382003-7eaf-47c6-8a98-08ecdc008a03
+[2026-08-05T13:04:42Z] sealed row=deepseek_v32.indexshare_fsss.seq131072 ordinal=8 invocation=ed1e11e6-5d9f-427f-aa4f-907c6fa6f43d
+[2026-08-05T13:39:03Z] row=deepseek_v32.operator_chain.seq1048576 segment=a941e7c2-2f00-4bfa-b8b4-3aafb1513443 permanently rejected reason=runner_interrupted_or_unhandled_failure_rc_130 path=/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_formal_exact26_v1/failed_segments/009_deepseek_v32.operator_chain.seq1048576.inprogress.926sFi.rejected.a941e7c2-2f00-4bfa-b8b4-3aafb1513443

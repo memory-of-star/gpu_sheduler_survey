@@ -1,0 +1,46 @@
+{
+  "accepted_timing": 0,
+  "allowed_exit_residual_max_observations_per_pid": 4,
+  "allowed_exit_residual_observation_count": 0,
+  "allowed_exit_residual_processes": [],
+  "allowed_observation_count": 31,
+  "allowed_processes": [
+    {
+      "pid": 1861526,
+      "proc_start_ticks": 217285659
+    }
+  ],
+  "baseline_observation_sequence": 0,
+  "coverage_limit": "foreign GPU processes wholly between completed samples may not be observed",
+  "coverage_model": "bounded_interval_nvidia_smi_process_sampling",
+  "errors": [],
+  "exit_residual_policy": "previously_observed_allowed_same_pid_start_ticks_and_exact_No_data_with_proc_missing_only_bounded_per_pid",
+  "finished_at": "2026-08-05T14:18:27.149700+00:00",
+  "foreign_processes_detected": false,
+  "kind": "gpu_exclusivity_monitor",
+  "lease_id": "b6fb7eb02dcc49b84ee972131449df2afa46da5d89bb8eac965240fc2e6476b8",
+  "lease_path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_fragment_smoke_v12_compactsource/rows/000_deepseek_v32.operator_chain.seq4096.inprogress.vVSJwJ/gpu_exclusivity_lease.json",
+  "max_allowed_exit_residual_observations_observed": 0,
+  "measurement_role": "gpu_exclusivity_monitor_only",
+  "observation_count": 109,
+  "observations_path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_fragment_smoke_v12_compactsource/rows/000_deepseek_v32.operator_chain.seq4096.inprogress.vVSJwJ/gpu_observations.ndjson",
+  "observations_sha256": "dccccca638ee5966ce7bb9e61887ba1437d58221502280bb15b547d12f181ac9",
+  "phase": "production_tier5_fragment_0_deepseek_v32.operator_chain.seq4096_80af6bb0-4cca-4aea-be14-987188361051_monitor",
+  "poll_interval_ms": 50,
+  "query_failure_detected": false,
+  "query_timeout_ms": 2000,
+  "ready_record_written": true,
+  "require_allowed_process": true,
+  "schema": 1,
+  "start_barrier_complete": true,
+  "started_at": "2026-08-05T14:18:16.876776+00:00",
+  "status": "PASS",
+  "target_gpu": {
+    "index": 0,
+    "name": "NVIDIA B200",
+    "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+  },
+  "terminated_on_failure": false,
+  "watch_pid": 1861526,
+  "watch_root_start_ticks": 217285659
+}

@@ -1,0 +1,4 @@
+INFO 08-05 13:04:50 [scheduler.py:239] Chunked prefill is enabled with max_num_batched_tokens=2048.
+INFO 08-05 13:04:50 [vllm.py:999] Asynchronous scheduling is enabled.
+INFO 08-05 13:04:50 [kernel.py:270] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+[2026-08-05T13:39:03Z] row=deepseek_v32.operator_chain.seq1048576 segment=a941e7c2-2f00-4bfa-b8b4-3aafb1513443 permanently rejected reason=runner_interrupted_or_unhandled_failure_rc_130 path=/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_formal_exact26_v1/failed_segments/009_deepseek_v32.operator_chain.seq1048576.inprogress.926sFi.rejected.a941e7c2-2f00-4bfa-b8b4-3aafb1513443

@@ -1,0 +1,96 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "errors": [],
+  "formal_campaign": true,
+  "fragment": {
+    "derived_row_seed": 20361805,
+    "device": {
+      "compute_capability": "10.0",
+      "cuda_visible_devices_selector": "0",
+      "device_index_inside_visible_set": 0,
+      "driver_version_raw": null,
+      "multi_processor_count": 148,
+      "name": "NVIDIA B200",
+      "process_pid": 700135,
+      "process_start_ticks": 216809198,
+      "query_performed": true,
+      "runtime_ordinal": 0,
+      "runtime_ordinal_zero": true,
+      "torch_cuda_version": "13.0",
+      "total_memory_bytes": 191503007744,
+      "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef",
+      "uuid_source": "torch_nvml_runtime_ordinal_mapping"
+    },
+    "device_sha256": "83dbffe755141659dfe7e77dac05b433a750c518c829b1f5b179e0df4c8c4e2a",
+    "gpu_exclusivity": {
+      "artifacts": {
+        "identity": {
+          "path": "gpu_identity.json",
+          "sha256": "90694ccc6a1d744e222d9c1bf4e4c458e1b2ed931e8f604f83d3b82d9e75009e",
+          "size_bytes": 517
+        },
+        "lease": {
+          "path": "gpu_exclusivity_lease.json",
+          "sha256": "4a5dd7791db0addb0ffdf286e784f49bf7b9bc12c27c1b3041eb8c26427777c1",
+          "size_bytes": 966
+        },
+        "monitor": {
+          "path": "gpu_monitor.json",
+          "sha256": "5723e6f2776394a642c220562d41a26453e0e8584994b35a2d93a514a4e6d907",
+          "size_bytes": 2171
+        },
+        "observations": {
+          "path": "gpu_observations.ndjson",
+          "sha256": "0423a2b8be78b315c0c89e79bddc47b77946eecc1edf0b662c11c4d763341cc3",
+          "size_bytes": 200643
+        },
+        "post": {
+          "path": "gpu_post.json",
+          "sha256": "315537e2027c325948f5848c005fbdd0ec6651946f18488805f19ae33aafc91f",
+          "size_bytes": 1191
+        },
+        "pre": {
+          "path": "gpu_pre.json",
+          "sha256": "2828ac5e77d1ce963abcf68697e30b4fc351beff6a384d501236a32a5a2621ad",
+          "size_bytes": 1190
+        }
+      },
+      "global_lock_key_sha256": "73b0575b8f0228bb8a3c720377c85f8ed7d48533722812d021120ff78ab48fbb",
+      "global_lock_path_sha256": "0a336038a364eb411b4ff87c20d3d0c26b7cff1aef44ec8b448fcf044fad4415",
+      "global_lock_scope": "target_uuid",
+      "gpu_uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef",
+      "kind": "production_gpu_exclusivity_evidence",
+      "lease_id": "ec377ce1c1d4a1f03ca2c59ea85e8ce6a7d837804debeb420809d693e37ef5fe",
+      "monitor_interval_ms": 50,
+      "query_timeout_ms": 2000,
+      "schema": 1,
+      "status": "PASS"
+    },
+    "invocation_uuid": "c3996225-262f-469a-9ed6-60ae7f390d87",
+    "ordinal": 3,
+    "row_id": "deepseek_v32.operator_chain.seq32768",
+    "runtime_build": {
+      "api_contracts_sha256": "5810a68fd2ddae28a4b03bf3b427e845c17dfa43b941b42b1a6126c1c7ecd0f4",
+      "device_build": {
+        "compute_capability": "10.0",
+        "cuda_visible_devices_selector": "0",
+        "driver_version_raw": null,
+        "multi_processor_count": 148,
+        "name": "NVIDIA B200",
+        "torch_cuda_version": "13.0",
+        "total_memory_bytes": 191503007744,
+        "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+      },
+      "packages_sha256": "0c42d55af10aa1eee471565ecc1798390b97992e5b5b2d25ef2e7902bdfd56e6",
+      "sources_sha256": "1f242e1f8123de7c3d75c8e0894d49ea17ef3bbe21d7e3841e0b4715c0ed3319",
+      "static_api_checks_sha256": "2f6402e9c199f0be55e2075dd029f169ebb450768742d0e109ad7bd0b6ffa4a9"
+    },
+    "runtime_build_sha256": "f0c50bbb7e021cc7eebf00be8fa26bc29d632d8cd267a24791c53f13eb28bfdd",
+    "sample_count": 186
+  },
+  "kind": "tier5_production_fragment_validation",
+  "schema": 1,
+  "status": "PASS"
+}

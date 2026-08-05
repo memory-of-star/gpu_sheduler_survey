@@ -12,7 +12,7 @@
 | 谁 | 负责什么 | 为什么 |
 |---|---|---|
 | **脚本** | preflight、冒烟、`run_session.sh`、`collect.sh`、§6 分支、文档自检 | 这些已经被计划规定死了，每次必须一模一样。把两小时的扫参放进 agent 的一个 turn 里，是掉线之后整场作废的标准方式 |
-| **Codex** | 声明实验坐标、读判决及其 caveat、按 §7 写报告、同步 `EXPERIMENT_REPORT_INDEX.md` | 只有这几件事需要判断力和中文行文 |
+| **Codex** | 声明实验坐标、读 decision point、为 Tier 4 与两个独立 Tier 5 入口选择新建/续跑结果根、读取各自最终 admission、按 §7 写报告并同步 `EXPERIMENT_REPORT_INDEX.md` | 这些步骤需要判断语义证据边界，并保证一个入口的 PASS 不会替另一个入口背书 |
 
 所以 agent 只在长任务**之前和之后**被调用，不在中间。
 
@@ -31,10 +31,58 @@ cd cta_level_PDL_design
 | `audit` | codex | 机器角色、设备事实、离线判决链自检、harness 是否被否决、**声明坐标 (a)–(d)**、危险项检查 |
 | `smoke` | 脚本 | `FAST=1 ./run_session.sh` 打到 `bench/results_smoke`，证明管路通 |
 | `measure` | 脚本 | `./run_session.sh`：Tier 0 + Tier 1p（含多波）+ gate |
-| `tier1` | codex | 写 `reports/tier1_benefit_map/multiwave_degree_grid_map.md` 并回写索引 |
+| `tier1` | codex | 写 `reports/tier1_benefit_map/multiwave_degree_structure_map.md` 并回写索引 |
 | `branch` | 脚本 | 读 `gate.json`，写 `codex/state/branch.json`，决定后面哪些 stage 允许跑 |
-| `tier4` | 脚本 + codex | LLM 三档，产出 `Ceiling − PDL_grid`；仅在 branch 允许时执行 |
+| `tier4` | 脚本 + codex | 仅在 branch 允许时进入独立 Tier 4 runner；本地模型、target-specific PTX/cubin 与 active executed graph 缺一即 fail-closed，agent 只采纳最终 admission |
 | `wrapup` | codex | 总报告、`collect.sh`、最终文档自检 |
+
+`run_session.sh` 到 Tier 1 decision point 即结束，这个边界保持不变。`run_campaign.sh` 的
+`tier4` stage 会消费 branch 决定；Tier 5 不塞回 `run_session.sh`，由 agent 在 decision point
+之后分别驱动以下入口：
+
+```bash
+cd bench/dsa
+RESULTS=/absolute/new-or-resumable/native-root ./run_dsa_chain.sh
+RESULTS=/absolute/new-or-resumable/production-root \
+  EXECUTE_GPU=1 TIER5_PRODUCTION_GPU_ALLOWED=1 ./run_production_tier5.sh
+```
+
+旧 Python same-stream Tier 5 路径永久拒收。`run_dsa_chain.sh` 是 native strict CTA bracket
+入口；`run_production_tier5.sh` 是 production-fragment 工作负载组件表征入口。两者各自完成
+最终 admission，不能相互补证。production admission 即使接受 workload timing，也没有 CTA
+Impl 和 unordered Ceiling，因此不得写成 CTA bracket 或 CTA headroom。
+
+如果用户明确把剩余 GPU 预算压到一小时，可另开全新结果根执行 **compact-14**，但它不修改
+canonical exact-26，也不能复用 exact-26 的部分 row。冻结口径是 DeepSeek-V3.2 / GLM-5 两个
+模型，4K / 128K 两个 context，三个 workload 全覆盖，再加每模型一个 MoE-32 row；仍保留
+5 warmups、31 timed repeats、完整配对与不抽样 correctness。完整产物必须恰好为 14 个
+correctness rows、1,302 samples、62 summaries；32K / 1M timing 明确排除。
+
+compact 根仍先走 production campaign 的 final reconstruction；回到
+`cta_level_PDL_design/` 子树根后再运行：
+
+```bash
+python3 bench/dsa/validate_production_tier5_compact.py /absolute/compact-root
+```
+
+只有终态 `compact_campaign_admission.json` 才能把
+`accepted_compact_workload_timing` 置为 `1`。即使它通过，canonical exact-26 仍是 incomplete，
+`accepted_exact26_workload_timing=0`，且 legacy `accepted_timing=0`、
+`accepted_workload_timing=0`、`accepted_CTA_bracket=0`、`headroom_defined=false`、
+`headroom_pct=null`。终态 admission 产生前不得声称 compact PASS。
+
+本轮 B200 实例已经产生终态
+[`compact_campaign_admission.json`](../bench/dsa/results_20260805_b200_production_compact_formal_v1_16g/compact_campaign_admission.json)：
+应标记为 **compact-14 scoped formal `PASS/DONE`**，其窄准入字段为
+`accepted_compact_workload_timing=1`，精确基数为 14 / 1,302 / 62。该标签仍保留上述全部
+边界：exact-26 `INCOMPLETE`、§9 `PARTIAL`、32K/1M timing 排除、legacy acceptance 为 0、
+CTA/headroom 未定义。正式判读链接到
+[`production_compact14_scoped_formal_20260805.md`](../reports/tier5_dsa/production_compact14_scoped_formal_20260805.md)；
+执行进度的权威状态仍以 [`EXPERIMENT_REPORT_INDEX.md`](../EXPERIMENT_REPORT_INDEX.md) 为准。
+
+续跑时先读该入口结果根的 terminal/admission/rejection 产物：runner 声明可续跑才复用原根；
+已经永久拒收或契约不匹配就保留原证据并换新根。不要用 `.done`、单个 profiler 文件或部分
+row 的成功代替最终 admission。
 
 单独跑某几个 stage：
 
@@ -52,7 +100,7 @@ SKIP_CODEX=1 ./codex/run_campaign.sh          # 只跑脚本部分，验证管�
 | `RESULTS` | `results` | `bench/` 下的结果目录。**历史 corrected 数据不要覆盖**，新跑用 `results_<tag>` |
 | `STEP_TIMEOUT` | `1800` | 单个 benchmark 调用的秒级上限，见下面第 5 节 |
 | `CODEX_MODEL` | 用 `~/.codex/config.toml` 的 | 覆盖模型 |
-| `CODEX_SANDBOX` | `workspace-write` | Tier 4 要下模型，脚本已顺带打开 network access；整机可弃用时可设 `danger-full-access` |
+| `CODEX_SANDBOX` | `workspace-write` | 控制 Codex agent stage 的文件权限；GPU runner 仍按各自契约独立 fail-closed，Tier 4 不自动下载模型 |
 | `CAMPAIGN_COMMIT` | `0` | 设 `1` 则 wrapup 之后提交**仅 markdown** 的改动，防止租用机消失带走结论 |
 
 ## 4. 文档自检是这套流程的闭环
@@ -102,6 +150,7 @@ codex --version
 # 3. 离线判决链先过（不需要 GPU，preflight 也会再跑一遍）
 python3 tools/make_test_fixtures.py --out /tmp/ctafix
 python3 tools/analyze_pilot.py /tmp/ctafix/pilot_matrix.log \
+        --expected /tmp/ctafix/pilot_expected_tags.txt \
         --json /tmp/ctafix/pilot_analysis.json --csv /tmp/ctafix/pilot_summary.csv
 python3 tools/gate.py /tmp/ctafix/pilot_analysis.json
 ```

@@ -1,0 +1,30 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "execution_scope": "row_fragment",
+  "fragment": {
+    "campaign_contract_sha256": "d4c2d9be4ee93eb8fb3cfca962900d0c2fbd6204799be729ceaa6783db480f83",
+    "campaign_fingerprint_sha256": "44f66a295049d47c42697aa37f20d3d1427efcc76e95354f6ccf13e7e21b6e74",
+    "derived_row_seed": 20363805,
+    "execution_segment_id": "59a1cfe3-e201-498c-9da9-7133efe20f1c",
+    "expected_row_count": 26,
+    "invocation_uuid": "59a1cfe3-e201-498c-9da9-7133efe20f1c",
+    "ordinal": 5,
+    "row": {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.indexshare_fsss.seq32768",
+      "seq": 32768,
+      "workload": "indexshare_fsss"
+    },
+    "row_id": "deepseek_v32.indexshare_fsss.seq32768"
+  },
+  "measurement_emitted": true,
+  "result_sha256": "2ddc058ecd77b438faba8e949cbf3f6e9a2b6aac21aa02a9da7edecaa024936d",
+  "schema": 1,
+  "status": "CANDIDATE"
+}

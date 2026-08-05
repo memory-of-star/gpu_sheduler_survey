@@ -205,8 +205,9 @@ import json, sys
 gate = json.load(open(sys.argv[1]))
 v = gate["verdict"]
 multi = bool(gate.get("plan_multi_complete"))
+sweep = bool(gate.get("plan_sweep_complete"))
 allow_tier4 = v in ("GO", "LLM_ONLY", "STOP")   # plan §8: STOP still runs the three rungs
-allow_tier23 = v == "GO" and multi
+allow_tier23 = v == "GO" and multi and sweep
 why = {
     "INVALID": "a configuration failed validation; no timing from this run is usable",
     "STOP":    "median space% < 2; only the Tier 4 three rungs, then stop",
@@ -215,13 +216,14 @@ why = {
 }[v]
 if v == "INVALID":
     allow_tier4 = False
-if v == "GO" and not multi:
-    why += "; but plan §5.3's 2x/8x/32x SM set is incomplete, so Tier 2/3 stays closed"
+if v == "GO" and (not multi or not sweep):
+    why += "; but the declared Tier 1.1 sweep is incomplete, so Tier 2/3 stays closed"
 out = {"verdict": v, "plan_multi_complete": multi, "allow_tier4": allow_tier4,
-       "allow_tier23": allow_tier23, "reason": why,
+       "plan_sweep_complete": sweep, "allow_tier23": allow_tier23, "reason": why,
        "median_space_pct": gate.get("median_space_pct")}
 json.dump(out, open(sys.argv[2], "w"), indent=2, sort_keys=True)
-print(f"verdict={v} multi_complete={multi} tier4={allow_tier4} tier23={allow_tier23}")
+print(f"verdict={v} multi_complete={multi} sweep_complete={sweep} "
+      f"tier4={allow_tier4} tier23={allow_tier23}")
 print(f"reason: {why}")
 PY
     touch "${STATE}/branch.done"
@@ -244,7 +246,8 @@ stage_wrapup() {
     rule; say "STAGE wrapup — umbrella report, collect, final doc check"
     codex_stage wrapup 90_campaign_wrapup.md
     if [ "${MACHINE}" = "GPU_BOX" ] && [ "${DRY_RUN}" != "1" ]; then
-        ./collect.sh >> "${STATE}/wrapup.log" 2>&1 || say "collect.sh reported a problem"
+        RESULTS="${RESULTS}" ./collect.sh >> "${STATE}/wrapup.log" 2>&1 \
+            || say "collect.sh reported a problem"
     fi
     # A rented box can disappear. CAMPAIGN_COMMIT=1 saves the prose so the session's
     # conclusions survive the machine. Markdown only: AGENTS.md §9 keeps binaries, tarballs

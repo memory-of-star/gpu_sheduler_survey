@@ -98,15 +98,38 @@ git clone <repo> && cd <repo>/cta_level_PDL_design
 ./run_session.sh          # ~3 GPU-hours, unattended: preflight, smoke, Tier 0, Tier 1p, gate
 ```
 
-It stops at the **decision point** on purpose. Tier 4/5 need a 54 GB model download and vLLM,
-which is the flakiest part of any session and is not worth booking before the gate says the
-direction is alive. What it leaves for the agent to read:
+It stops at the **decision point** on purpose. Tier 4 is a separate, fail-closed admission:
+the model must be fully staged locally, and a target-specific same-process driver must prove the
+worker-side PTX/cubin and active executed graph for every declared variant before any timing is
+admitted. Tier 5 is not an extension of that driver. Its old Python same-stream path is
+permanently rejected; the native strict campaign and the production-fragment campaign are two
+independent entry points with independent final admission. Native strict is the CTA bracket path.
+Production fragments may admit workload-component timing, but they provide neither a CTA Impl nor
+an unordered Ceiling, so their timing must never be presented as a CTA bracket or CTA headroom.
+The canonical wider production-formal scope is the exact 26-row matrix. A user-authorized,
+one-hour compact campaign is a separate bounded admission, not completion of or a replacement for
+that exact-26 scope. Its only admissible matrix is both production models at 4K and 128K across all
+three workloads, plus one MoE-32 row per model: 14 correctness rows, 1,302 samples, and 62
+summaries with the formal 5 warmups / 31 timed repeats unchanged. It excludes 32K and 1M timing.
+Even after its own terminal validator passes, it may set only
+`accepted_compact_workload_timing=1`; `accepted_timing`, `accepted_workload_timing`, and
+`accepted_CTA_bracket` stay zero, while CTA headroom stays undefined (`headroom_defined=false`,
+`headroom_pct=null`). Before that terminal admission exists, the compact campaign is not a PASS.
+After it exists, the precise label is **compact-14 scoped formal PASS/DONE**, never production
+exact-26 PASS or Tier 5 complete. The current B200 compact-14 campaign has reached that narrow
+terminal state; its evidence boundary is fixed by
+[`production_compact14_scoped_formal_20260805.md`](reports/tier5_dsa/production_compact14_scoped_formal_20260805.md),
+while the exact-26 scope and §9 remain incomplete/partial.
+None of these separate admissions is a reason to weaken the Tier 1 gate. What the session leaves
+for the agent to read:
 
 | Artefact | What it is |
 |---|---|
 | `bench/<results>/gate.json` | the verdict: `GO` / `LLM_ONLY` / `STOP` / `INVALID`, with the medians behind it |
 | `bench/<results>/pilot_summary.csv` | per-configuration statistics with bootstrap CIs |
 | `bench/<results>/pilot_matrix.log` | raw `SAMPLE` / `SUMMARY_PILOT` records |
+| `bench/<results>/tier0_chain_validation.json` | Tier 0.1 raw-pair/bootstrap plus semantics-3 epoch/checkpoint/final-digest/trace-artifact recomputation |
+| `bench/<results>/tier0_background_validation.json` | Tier 0.3 formal matrix, paired statistics, resource metadata, and all retained trace checks |
 | `bench/<results>/session.log` | the whole run, timestamped from session start |
 | `bench/<results>/failures.log` | steps that failed; the session continues past them |
 
@@ -114,13 +137,24 @@ The gate thresholds live in `EXPERIMENT_PLAN.md` §6 and are implemented by `too
 **Do not re-derive the verdict by eye** — if you disagree with it, the disagreement is with §6
 and belongs there, not in a report.
 
-`INVALID` (exit 2) means a configuration failed correctness validation. When that happens no
-timing from the run is usable, and the report says so instead of quoting numbers.
+`INVALID` (exit 2) means at least one configuration failed correctness or its required per-config
+semantic trace proof. When that happens no timing from the run is usable, and the report says so
+instead of quoting numbers. A missing manifest row, too few repeats, or incomplete plan-wide
+coverage is a different state: the numeric verdict is provisional and cannot open Tier 2/3, but it
+does not by itself turn otherwise valid configurations into an `INVALID` run.
+
+Tier 0 has its own fail-closed boundary before that gate. The Tier 0.1 semantics-3 record stream
+must carry the exact monotonic epoch schedule, independently recomputable checkpoint and final
+digests, and a declared trace path whose row epochs bind the CSV to the final SAMPLE. Both Tier 0
+strict JSON files above must be freshly generated. If either validator fails, `run_session.sh`
+may finish the fail-soft Tier 1/collect path for diagnostics, but the session itself returns 2 even
+when the Tier 1 `gate.json` says `GO`.
 
 ```bash
 # Offline analysis chain (no GPU needed) — always validate on fixtures first
 python3 tools/make_test_fixtures.py --out /tmp/ctafix
 python3 tools/analyze_pilot.py /tmp/ctafix/pilot_matrix.log \
+        --expected /tmp/ctafix/pilot_expected_tags.txt \
         --json /tmp/ctafix/pilot_analysis.json --csv /tmp/ctafix/pilot_summary.csv
 python3 tools/gate.py          /tmp/ctafix/pilot_analysis.json
 python3 tools/analyze.py       /tmp/ctafix/summary.txt
@@ -196,11 +230,15 @@ by `tools/gate.py`:
 - Minimum deliverable, in priority order: Tier 1.1 degree × grid map; Tier 4
   `Ceiling − PDL_grid`; Tier 0.1 achievable overlap depth; Tier 0.3 occupancy curve.
 
-**Current top gaps.** Live progress and resume instructions live in
-`EXPERIMENT_REPORT_INDEX.md` §0–§2 — update that file when gaps change, not this paragraph.
-Snapshot 2026-08-05: multi-wave harness/`tier1p` grids are ready on disk but **unmeasured**;
-the two decisive missing pieces are (1) **Tier 1.1 multi-wave numbers on GPU**, and
-(2) **Tier 4's `Ceiling − PDL_grid`**. Do not let mechanism-level work (Tier 2/3) jump ahead.
+**Admission snapshot (2026-08-05).** Live execution progress and resume instructions belong in
+`EXPERIMENT_REPORT_INDEX.md` §0–§2, not here. The `tier1p` contract uses a programmatic CUDA
+Graph edge for Floor and resource-reserved high/low-priority streams for Impl/Ceiling. A nominal
+`P,C > SM` point counts as multi-wave only when `%globaltimer` proves that a consumer started
+while producer CTAs were still unstarted, all producers ultimately completed, Floor entered
+during producer tails, and Ceiling observed poisoned/stale output. Missing that per-config proof
+is an `INVALID` admission failure, not a caveat that may be repaired in prose. Missing manifest,
+repeat, or plan-wide coverage instead keeps the numeric verdict provisional. Tier 2/3 remains
+downstream of the complete Tier 1.1 gate; Tier 4 remains a separate real-workload admission.
 
 ## 7. Report conventions
 
@@ -266,6 +304,15 @@ reports afterwards (`codex/README.md`):
 ./codex/run_campaign.sh         # audit -> smoke -> measure -> report -> branch -> tier4 -> wrapup
 ```
 
+`run_session.sh` still ends at the Tier 1 decision point. Post-decision work uses its own
+fail-closed runners and fresh or explicitly resumable result roots: `bench/llm/run_llm_sweep.sh`
+for Tier 4, `bench/dsa/run_dsa_chain.sh` for the Tier 5 native strict bracket, and
+`bench/dsa/run_production_tier5.sh` for the independent production-fragment characterization.
+The agent reads each runner's terminal admission before writing a report; success in one entry
+does not admit another. The user-authorized one-hour compact-14 scope, when selected, uses its own
+fresh result root and `bench/dsa/validate_production_tier5_compact.py`; it must not reuse partial
+exact-26 rows or relabel the canonical exact-26 campaign complete.
+
 `STEP_TIMEOUT` (seconds, default `0` = off) bounds one benchmark invocation. Fail-soft
 assumes a step terminates, and multi-wave software waits have no forward-progress guarantee:
 a resident consumer CTA can spin on a producer CTA from a wave the scheduler has not placed
@@ -280,16 +327,24 @@ FAST=1 ./run_all.sh             # smoke, minutes — must print "campaign finish
 ```
 
 **Harness status — a phase name here is a correctness claim.** `tier1p` drives `cta_dep_pilot`,
-the corrected harness, and is the only admissible source of Tier 1 gate data. It accepts
-`P,C > SM` (multi-wave, plan §5.3) with per-CTA publish-after-ready. CUDA sources edited on the
-DEV BOX are unverified until they build on the GPU box. `tier1` and `tier23` drive
+the corrected multi-wave harness, and is the only admissible source of Tier 1 gate data. Floor
+uses a programmatic CUDA Graph edge; Impl/Ceiling use resource-reserved priority streams. Every
+point must carry complete `%globaltimer` producer/consumer traces, and nominal `P,C > SM` points
+satisfy §5.3 only with `multiwave_overlap_proven=1` plus complete producer progress, early Floor,
+and intentionally wrong Ceiling evidence. Trace-incomplete attempts may use only the bounded,
+explicitly logged retry contract in `bench/README.md`; they never become samples. CUDA sources
+edited on the DEV BOX are unverified until they build on the GPU box. `tier1` and `tier23` drive
 `cta_dep_bench`, whose trigger semantics are rejected (§4) — they are retained for re-audit,
 print a warning, and are excluded from `all`. Their timings must never reach a conclusion.
-The remaining gap is the **measured** multi-wave map on rented hardware, not the harness gate.
 
 Driver contract, required for the rented-machine model: unattended, resumable via
 `results/<step>.done`, fail-soft (a failing step is recorded and the campaign continues), and
-every raw number teed to `results/`. Preserve these properties in any change.
+every raw number teed to `results/`. A `run_all.sh` step/pilot marker is valid only when its
+schema binds the FAST flag, complete argv, executable SHA-256, and GPU UUID/name/compute
+capability/driver fingerprint; a legacy or mismatched marker must rerun. `run_session.sh --fresh`
+clears the formal result state at the Tier 0 entry and must not pass `--fresh` a second time to
+Tier 1p, which would erase the Tier 0 state just produced. Preserve these properties in any
+change.
 `clc_probe` needs sm_100+ / CUDA ≥ 12.8 and is built best-effort so H100 still gets everything else.
 
 ## 9. Conventions

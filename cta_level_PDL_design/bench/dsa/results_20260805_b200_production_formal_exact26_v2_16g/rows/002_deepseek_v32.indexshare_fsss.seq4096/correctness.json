@@ -1,0 +1,255 @@
+{
+  "all_expected_rows_present": true,
+  "execution_scope": "row_fragment",
+  "fragment": {
+    "campaign_contract_sha256": "3a56f9e03ecd00f380f52f7f556f95956b1cf9d52058df84b558f763c701da2b",
+    "campaign_fingerprint_sha256": "6eedb57203a08917ec487070e0b6c0882c39a9f3de3400697e3acc3e70a09467",
+    "derived_row_seed": 20263805,
+    "execution_segment_id": "91db85e9-0800-4ea6-af2f-2e316bf81937",
+    "expected_row_count": 26,
+    "invocation_uuid": "91db85e9-0800-4ea6-af2f-2e316bf81937",
+    "ordinal": 2,
+    "row": {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.indexshare_fsss.seq4096",
+      "seq": 4096,
+      "workload": "indexshare_fsss"
+    },
+    "row_id": "deepseek_v32.indexshare_fsss.seq4096"
+  },
+  "fragment_row_id": "deepseek_v32.indexshare_fsss.seq4096",
+  "kind": "tier5_production_correctness",
+  "rows": [
+    {
+      "all_query_rows_executed": 4096,
+      "causal_pair_sampling": "NONE",
+      "chunk_causal_pairs_sum": 8390656,
+      "chunk_pair_partition_verified": true,
+      "chunks": [
+        {
+          "causal_pair_sampling": "NONE",
+          "first_query_causal_key_count": 1,
+          "indexer_causal_pairs_executed": 8390656,
+          "indexer_workload_geometry": "exact_causal_lower_triangle",
+          "last_query_causal_key_count": 4096,
+          "manual_indexer_reference": {
+            "computation_count": 1,
+            "modes_using_reference": [
+              "off",
+              "on"
+            ],
+            "shared_read_only_across_modes": true
+          },
+          "mode_correctness": [
+            {
+              "actual_indexer_calls": 1,
+              "attention_elements_checked": 1073741824,
+              "attention_layers": 4,
+              "attention_max_abs": 0.015625,
+              "control": {
+                "deep_gemm_readback": false,
+                "deep_gemm_readback_after_validation": false,
+                "flashinfer_enable_pdl": false,
+                "requested": false,
+                "topk_control": null
+              },
+              "expected_indexer_calls": 1,
+              "layer_output_elements_checked": 117440512,
+              "layer_output_max_abs": 0.03125,
+              "manual_reference_shared_read_only": true,
+              "native_replay_calls": 1,
+              "output_digest": {
+                "abs_max": 3.9375,
+                "finite_elements": 29360128,
+                "sha256": "e8c8d1d58d1e72b0be067f31255c49663f682e597df13ed850fb38ec7a192baa",
+                "sum": -6267.7998046875,
+                "sum_squares": 25518904.0
+              },
+              "output_elements_checked": 29360128,
+              "pattern": "FSSS",
+              "pdl_mode": "off",
+              "sparse_mla_calls": 4,
+              "status": "PASS",
+              "topk_diagnostics": {
+                "acceptance_mismatches": 0,
+                "duplicate_entries": 0,
+                "exact_set_difference_role": "diagnostic_not_acceptance",
+                "indexer_logits_quality": {
+                  "actual_source": "full-N vllm.utils.deep_gemm.fp8_fp4_mqa_logits(clean_logits=False), then causal-valid-cell mask",
+                  "calc_diff": 8.881784197001252e-15,
+                  "calc_diff_limit_exclusive": 5e-06,
+                  "invalid_logits_contract": "UNSPECIFIED_IGNORED",
+                  "kernel_valid_nonfinite": 0,
+                  "manual_reference": "sum_h(relu(q_fp8_dequant@k_fp8_dequant.T)*weights)",
+                  "manual_reference_reuse": "computed_once_per_chunk_and_shared_read_only_across_off_on",
+                  "manual_rms": 0.7033638385543756,
+                  "manual_valid_nonfinite": 0,
+                  "max_abs_diff": 1.430511474609375e-06,
+                  "mean_abs_diff": 6.145594568667596e-08,
+                  "native_replay_calls": 1,
+                  "native_replay_pdl_mode": "off",
+                  "quality_query_row_batch": 8,
+                  "quality_reduction": "streamed_query_rows_all_causal_valid_cells",
+                  "quality_reduction_dtype": "float64",
+                  "replay_total_seq_lens": 4096,
+                  "rms_abs_diff": 8.940065983078093e-08,
+                  "row_calc_diff_limit_exclusive": 0.001,
+                  "row_calc_diff_max": 2.4202861936828413e-14,
+                  "row_calc_diff_p99": 1.3322676295501878e-14,
+                  "row_quality_failures": 0,
+                  "status": "PASS",
+                  "valid_elements": 8390656
+                },
+                "invalid_valid_entries": 0,
+                "logits_quality_failure": 0,
+                "pdl_mode": "off",
+                "rows_with_valid_set_symmetric_difference": 1,
+                "score_margin_quantiles": {
+                  "max": 0.0,
+                  "median": 0.0,
+                  "min": 0.0,
+                  "p01": 0.0,
+                  "p99": 0.0
+                },
+                "score_reference": "deepgemm_full_n_logits_causal_masked",
+                "score_scale": {
+                  "k_dequant_abs_max": 4.5,
+                  "q_fp8_abs_max": 448.0,
+                  "threshold_abs_max": 3.81365966796875,
+                  "weight_abs_max": 0.0006473755929619074
+                },
+                "score_violation_examples": [],
+                "score_violation_rows_first_half": 0,
+                "score_violation_rows_second_half": 0,
+                "score_violations": 0,
+                "tail_nonminus_one_observed": 0,
+                "tail_slots_ignored": 2096128,
+                "topk_tail_contract": "UNSPECIFIED_IGNORED",
+                "valid_set_symmetric_difference": 2
+              },
+              "topk_mismatches": 0,
+              "topk_output_slots_observed": 8388608,
+              "topk_tail_contract": "UNSPECIFIED_IGNORED",
+              "topk_tail_slots_ignored": 2096128,
+              "topk_valid_elements_checked": 6292480,
+              "validation_scope": "all_rows_valid_topk_prefix_attention_and_layer_outputs"
+            },
+            {
+              "actual_indexer_calls": 1,
+              "attention_elements_checked": 1073741824,
+              "attention_layers": 4,
+              "attention_max_abs": 0.015625,
+              "control": {
+                "deep_gemm_readback": true,
+                "deep_gemm_readback_after_validation": true,
+                "flashinfer_enable_pdl": true,
+                "requested": true,
+                "topk_control": null
+              },
+              "expected_indexer_calls": 1,
+              "layer_output_elements_checked": 117440512,
+              "layer_output_max_abs": 0.03125,
+              "manual_reference_shared_read_only": true,
+              "native_replay_calls": 1,
+              "output_digest": {
+                "abs_max": 3.9375,
+                "finite_elements": 29360128,
+                "sha256": "0b8438e5220cfc73102b9c23c008ef5f3938a69dc36068cd63fe922dd5eb6aea",
+                "sum": -6259.12158203125,
+                "sum_squares": 25518892.0
+              },
+              "output_elements_checked": 29360128,
+              "pattern": "FSSS",
+              "pdl_mode": "on",
+              "sparse_mla_calls": 4,
+              "status": "PASS",
+              "topk_diagnostics": {
+                "acceptance_mismatches": 0,
+                "duplicate_entries": 0,
+                "exact_set_difference_role": "diagnostic_not_acceptance",
+                "indexer_logits_quality": {
+                  "actual_source": "full-N vllm.utils.deep_gemm.fp8_fp4_mqa_logits(clean_logits=False), then causal-valid-cell mask",
+                  "calc_diff": 8.881784197001252e-15,
+                  "calc_diff_limit_exclusive": 5e-06,
+                  "invalid_logits_contract": "UNSPECIFIED_IGNORED",
+                  "kernel_valid_nonfinite": 0,
+                  "manual_reference": "sum_h(relu(q_fp8_dequant@k_fp8_dequant.T)*weights)",
+                  "manual_reference_reuse": "computed_once_per_chunk_and_shared_read_only_across_off_on",
+                  "manual_rms": 0.7033638385543756,
+                  "manual_valid_nonfinite": 0,
+                  "max_abs_diff": 1.430511474609375e-06,
+                  "mean_abs_diff": 6.145594568667596e-08,
+                  "native_replay_calls": 1,
+                  "native_replay_pdl_mode": "on",
+                  "quality_query_row_batch": 8,
+                  "quality_reduction": "streamed_query_rows_all_causal_valid_cells",
+                  "quality_reduction_dtype": "float64",
+                  "replay_total_seq_lens": 4096,
+                  "rms_abs_diff": 8.940065983078093e-08,
+                  "row_calc_diff_limit_exclusive": 0.001,
+                  "row_calc_diff_max": 2.4202861936828413e-14,
+                  "row_calc_diff_p99": 1.3322676295501878e-14,
+                  "row_quality_failures": 0,
+                  "status": "PASS",
+                  "valid_elements": 8390656
+                },
+                "invalid_valid_entries": 0,
+                "logits_quality_failure": 0,
+                "pdl_mode": "on",
+                "rows_with_valid_set_symmetric_difference": 1,
+                "score_margin_quantiles": {
+                  "max": 0.0,
+                  "median": 0.0,
+                  "min": 0.0,
+                  "p01": 0.0,
+                  "p99": 0.0
+                },
+                "score_reference": "deepgemm_full_n_logits_causal_masked",
+                "score_scale": {
+                  "k_dequant_abs_max": 4.5,
+                  "q_fp8_abs_max": 448.0,
+                  "threshold_abs_max": 3.81365966796875,
+                  "weight_abs_max": 0.0006473755929619074
+                },
+                "score_violation_examples": [],
+                "score_violation_rows_first_half": 0,
+                "score_violation_rows_second_half": 0,
+                "score_violations": 0,
+                "tail_nonminus_one_observed": 0,
+                "tail_slots_ignored": 2096128,
+                "topk_tail_contract": "UNSPECIFIED_IGNORED",
+                "valid_set_symmetric_difference": 2
+              },
+              "topk_mismatches": 0,
+              "topk_output_slots_observed": 8388608,
+              "topk_tail_contract": "UNSPECIFIED_IGNORED",
+              "topk_tail_slots_ignored": 2096128,
+              "topk_valid_elements_checked": 6292480,
+              "validation_scope": "all_rows_valid_topk_prefix_attention_and_layer_outputs"
+            }
+          ],
+          "query_count": 4096,
+          "query_sampling": "NONE",
+          "query_start": 0
+        }
+      ],
+      "correctness_pdl_modes": [
+        "off",
+        "on"
+      ],
+      "indexer_causal_pair_formula": "S*(S+1)/2",
+      "indexer_causal_pairs_executed": 8390656,
+      "indexer_workload_geometry": "exact_causal_lower_triangle",
+      "per_chunk_mode_correctness_complete": true,
+      "query_sampling": "NONE",
+      "row_id": "deepseek_v32.indexshare_fsss.seq4096",
+      "status": "PASS"
+    }
+  ],
+  "schema": 1,
+  "status": "PASS"
+}

@@ -119,7 +119,9 @@ __device__ __forceinline__ unsigned int smid() {
 | `random` | 伪随机 parent，需完整邻接表 | 失真最严重 | 最坏情况上界 |
 | `all` / `none` | 全连接 / 无依赖 | 退化 | 等价于 grid 级 barrier / 并发上界 |
 
-`cta_dep_pilot` **只接受 `interval|grouped|strided|self`**，喂 `random`/`all`/`none` 会被拒绝并提示。`cta_dep_bench` 七种都收，但它是被否决的 harness（§3）。
+`cta_dep_pilot` 接受 `interval|grouped|strided|random|self`；`random` 必须保证每个
+child 的 parent 唯一，使请求 degree 等于实际 degree。`all`/`none` 会被拒绝。
+`cta_dep_bench` 七种都收，但它是被否决的 harness（§3）。
 
 #### 为什么必须与依赖度独立扫描
 
@@ -140,10 +142,10 @@ __device__ __forceinline__ unsigned int smid() {
 **记号**：全文用 **P** 表示生产者 kernel 的 CTA 数（`--producers`）、**C** 表示消费者 kernel 的 CTA 数（`--consumers`）、**SM** 表示设备的 SM 数（B200/B300 = 148）。
 
 - **依赖度** 1→1024（`--degree`）
-- **grid 规模** 64→8192 CTA（相对 SM：欠填充 / `=SM` / `2×·8×·32×SM` 多波，见 §5.3）。`cta_dep_pilot` 另有：
+- **grid 规模** 64→8192 CTA（相对 SM：欠填充 / `=SM` / `2×·8×·32×SM` 多波候选，见 §5.3）。`cta_dep_pilot` 另有：
   - **每 SM 可容纳 CTA 数 ≥ 2** —— 由 shared memory 与寄存器用量决定。生产者与消费者必须能在同一 SM 上共存，否则消费者只能等生产者退休，重叠恒为零
-  - 单波（`P,C ≤ SM`）下全部生产者可同时常驻；多波下后一批生产者要等前一批退休——这会改变收益结构，所以**两套都要测**，不能用单波外推多波
-  - 拒绝 `random` / `all` / `none` 结构（提示改用 `cta_dep_bench` 仅供复审，其计时不可采信）
+  - `P,C` 与 SM 的比值只划分计划 grid-ratio 区间；真多波要由 `%globaltimer` trace 证明后续生产者 CTA 确实延后进入，不能从 ratio 推导（§5.3）
+  - 接受 parent 唯一的 `random`；拒绝 `all` / `none` 结构
 - **每 CTA 计算量**，单位 spin cycles，四段各自独立：
   - `--ready` 生产者写出数据**之前**的工作（`--skew-bins` 可让各 CTA 的就绪时刻错开）
   - `--tail` 生产者发布数据**之后**、与该数据无关的工作。**收益全部来自这一段**：CTA 级消费者可以在生产者还在跑 tail 时就开始做依赖工作，`griddepcontrol.wait` 必须等整个 grid 退休。tail 为零则无论依赖结构多理想都没有可重叠的窗口——这正是 §5.2 扫描 tail/prologue 比的原因
@@ -159,15 +161,23 @@ __device__ __forceinline__ unsigned int smid() {
 
 ## 3. 准入条件：一次测量在什么条件下才算数
 
-**这是对 harness 的硬性要求，不是建议。** 违反其中任何一条，产出的计时一律作废——不论它跑得多顺、输出格式多正常。写新 harness 或改旧 harness 之前先过一遍这六条。
+**这是对 harness 的硬性要求，不是建议。** 违反其中任何一条，产出的计时一律作废——不论它跑得多顺、输出格式多正常。写新 harness 或改旧 harness 之前先过一遍这些条件。
 
-### 3.1 触发时刻必须等于真实的数据就绪时刻
+### 3.1 必须区分 launch eligibility trigger 与真实 readiness publication
 
-生产者**不得**在数据真正写出之前发布完成标志或触发 PDL。若提前发布，消费者的等待在被执行时已经满足，测到的是「**无依赖的并发**」而不是「CTA 级依赖的收益」，而 Floor 与 Ceiling 会一起塌向同一个值。
+launch-eligibility trigger 只决定消费者 grid 何时可以被派发；readiness publication 才表示数据已经真正可读。两者在不同包夹点的关系是：
 
-**这条要单列，是因为它已经真实发生过一次。** 被否决的 `cta_dep_bench` 就是在 PDL trigger 之前发布了全部 `done[]`；它跑得动、不报错、输出格式完全正常，一整轮 campaign 的数据全部作废。审计记录见 [`reports/rejected/fast_campaign.md`](reports/rejected/fast_campaign.md)。
+| 点 | launch eligibility | readiness publication / wait |
+|---|---|---|
+| **Floor** | 生产者数据 ready 后才 trigger，即 `trigger_floor=ready` | 消费者走 grid 级 `griddepcontrol.wait` |
+| **Impl** | 生产者入口就 trigger，即 `trigger_impl=entry` | 数据写出并完成所需内存顺序后才 release-store CTA ready flag；消费者等这些 flag |
+| **Ceiling** | 生产者入口就 trigger，即 `trigger_ceiling=entry` | **不发布、也不等待 readiness**；故意产生错误结果，只取时间 |
 
-**这类错误无法靠跑一遍发现，只能靠设计审查。** 因此任何 harness 都必须在输出里自报触发点（`trigger_floor=` / `trigger_impl=` / `trigger_ceiling=`），让审阅者不读 `.cu` 也能核对。
+因此，Impl 的 entry trigger 可以早于数据 ready，但它的 release flag **不得**早于数据 ready。否则消费者的等待在实际执行时已经预满足，测到的是「无依赖的并发」，而不是 CTA 级依赖收益。
+
+**这条要单列，是因为它已经真实发生过一次。** 被否决的 `cta_dep_bench` 在 PDL trigger 之前已经发布全部 `done[]`，使消费者获得 launch eligibility 时等待已经预满足；它跑得动、不报错、输出格式完全正常，一整轮 campaign 的数据全部作废。审计记录见 [`reports/rejected/fast_campaign.md`](reports/rejected/fast_campaign.md)。
+
+**这类错误无法靠跑一遍发现，只能靠设计审查与语义 trace 核对。** 因此任何 harness 都必须在输出里自报三个触发点（`trigger_floor=` / `trigger_impl=` / `trigger_ceiling=`），并证明 Impl 的 release flag 在对应数据 ready 之后、Ceiling 没有 readiness 等待，让审阅者不只依赖 `.cu` 中的意图注释。
 
 ### 3.2 Ceiling 必须真的去掉依赖，并承认结果是错的
 
@@ -183,11 +193,16 @@ Ceiling 点的语义是「依赖零成本」，实现方式是把依赖整个拿
 
 任一配置校验失败 → 整轮判 `INVALID`，**该轮所有计时都不可用**（§6）。
 
+校验记录还必须与本次 invocation 绑定，不能只自报 `mismatches=0`：至少保留每次唯一的
+poison/epoch 身份与可独立重算的输出摘要，并让 validator 核对 validation 与 timed sample 的
+执行顺序、固定 workload 参数和最终 trace。畸形字段、越界 trace 或旧 validation 行拼接都必须
+得到结构化 `FAIL`，不得因 traceback 留下一份旧 `PASS` 文件。
+
 ### 3.5 必须自报覆盖边界
 
 每条汇总记录都要带上：P、C、SM 数、每 SM 常驻 CTA 数、依赖度、结构、`tightness`（依赖度 / 区间宽度）、`eff_degree`（区间编码下实际等待的父节点数）、重复次数。
 
-**缺这些就无法判断结论能外推到哪。** 尤其是 P、C 与 SM 的关系决定了该点属于单波还是多波（§5.3），这是判读时第一个要看的东西。
+**缺这些就无法判断结论能外推到哪。** 尤其是 P、C 与 SM 的关系决定计划 grid-ratio 区间，但是否真多波还必须看 timestamp proof（§5.3）；这两项是判读覆盖边界时最先要看的东西。
 
 ### 3.6 依赖度与结构必须能独立设定
 
@@ -197,6 +212,10 @@ Ceiling 点的语义是「依赖零成本」，实现方式是把依赖整个拿
 
 每个配置至少 31 次重复，报告中位数与置信区间，不报单次值。丢弃前若干次预热。同一配置的 Floor / Impl / Ceiling 必须在**同一次进程内、相邻时间**测出，避免跨进程的时钟与频率漂移混进差值。
 
+唯一可重试的计时尝试是**必要的 trace timestamp 未完整落盘**：在配置、repeat 与 mode 均不变的前提下，最多显式重试 3 次。每个被拒绝的尝试必须保留 `REJECTED_ATTEMPT`，写明 tag、repeat、mode、attempt 和缺失的 timestamp 计数；它**不得**输出 `SAMPLE`，也不得进入中位数或置信区间。重试耗尽后仍缺必要 timestamp，属于必要语义 trace proof 缺失，按 §6 判 `INVALID`。
+
+`timeout`、CUDA 错误、correctness 失败、overlap 语义失败、`Ceiling-stale` 语义失败与性能离群点**都不得重试**。完整 trace 显示语义条件没成立，与 timestamp 没写全是两类事；前者不能藉重试挑到一次有利调度。性能离群样本也必须照常保留在 `SAMPLE` 与统计里。
+
 ---
 
 ## 4. Tier 0 — 基础事实
@@ -205,7 +224,10 @@ Ceiling 点的语义是「依赖零成本」，实现方式是把依赖整个拿
 
 ### 4.1 · 同 stream 内实际能重叠几层 kernel — B3 可达性
 
-产出 `bench/results/tier0_facts.log` 中 `tier0=chain` 行。构造 K1→K2→K3→K4 链，测真实重叠层数。
+产出 `bench/results/tier0_facts.log` 中 `tier0=chain` 行。构造 1→6 stage 的
+K1→K2→…→K6 链，测 overlap 沿链传播的收益，并从逐 CTA trace 直接计算同时活跃 grid/CTA
+峰值。扩到六级是对原四级扫描的覆盖扩展，用于把「流水传播层数」与「瞬时并发层数」分开；
+模型反解 depth 不得代替 trace 计数。
 
 **判读**：最大有效窗口深度。这个数字直接决定 B3 维度上哪些选项在本设备上**可达**——如果硬件实际只能重叠 2 层，设计空间里假设深流水的选项就没有意义。
 
@@ -221,9 +243,15 @@ Ceiling 点的语义是「依赖零成本」，实现方式是把依赖整个拿
 
 ### 4.3 · 等待中 CTA 的 occupancy 代价曲线 — B2 唯一定价依据
 
-扫描消费者 kernel 的 shared memory（0/8/16/32/64KB）与寄存器数，测等待时长 vs achieved occupancy vs 端到端时间。产出 `tier0=occupancy` 行。
+扫描等待者 kernel 的 shared memory（0/8/16/32/64KB）与寄存器数。每个资源点首先保留容量曲线：自报实际寄存器数、spill / local memory、dynamic shared memory、每 SM 可常驻等待 CTA 数与总等待 CTA 数。
 
-**判读**：这条曲线是 B2 维度的唯一定价依据，并且用于 §7.2 反推「若等待不占用槽位能省多少」——那个量在今天的硬件上无法直接测。
+在同一资源点上再做 productive-background 配对对照：
+
+- `deferred_gate` 对照与 `resident_wait` 实验必须使用**完全相同的等待者 kernel、grid、资源参数、输入毒化与全输出校验**；对照不得省掉等待者。唯一差别是对照使用普通同 stream 派发、使等待者在生产者退休后才进入；实验对同一等待者启用 PSS launch path，允许它在 ready 前常驻并执行同一个 wait。
+- 两档都与同一个有用计算的 background kernel 并发；不能用空 spin 代替 productive work。配对样本在同一进程内相邻测量，且交替两档顺序。
+- 产出 `tier0=background` 逐次样本与汇总：延后 / 提前进入的等待者数、峰值常驻等待者、background 活跃时间、峰值并发 CTA、有用工作吞吐、等待时间、端到端时间及两档配对差值；中位数与置信区间均必须保留。
+
+**判读**：资源扫描给出「等待 CTA 能占多少槽位」的容量曲线；productive-background 配对差值给出「这些常驻等待者实际挤掉多少有用工作」。两者合在一起才是 B2 维度的定价依据。§7.2 只能在明示的工程单调性假设下，用该差值构造「若等待不占用槽位能省多少」的条件化 scenario envelope；那个量在今天的硬件上无法直接测。
 
 ### 4.4 · CLC `try_cancel` 实测特性
 
@@ -263,7 +291,11 @@ Ceiling 点的语义是「依赖零成本」，实现方式是把依赖整个拿
 | 扫描 | 固定 | 变量 | 要求范围 |
 |---|---|---|---|
 | 依赖度轴 | 结构 = `interval` | 依赖度 | 1 → 1024（对数步进） |
-| 结构轴 | 依赖度 = 32 | 结构 | `self` / `interval` / `grouped` / `strided` / `random` |
+| 结构轴 | 依赖度 = 32（`self` 例外，按定义恒为 1） | 结构 | `self` / `interval` / `grouped` / `strided` / `random` |
+
+`self` 是 1-to-1 的语义控制点，若强行把它设成 degree 32 就不再是 `self`。因此它作为
+degree=1 的端点与其余固定 degree=32 的结构并列；报告必须显式标出这个例外，不能把五点写成
+严格等 degree。该澄清修正了结构名称与“固定 32”之间原本不可同时满足的规格矛盾。
 
 两组都要在多个 grid 规模上重复，grid 范围要求见 §5.3。
 
@@ -277,21 +309,23 @@ Ceiling 点的语义是「依赖零成本」，实现方式是把依赖整个拿
 
 ### 5.3 · grid 规模：必须覆盖多波区间 `P,C > SM`
 
-**这是本项目最大的开放缺口。**
+**这是判决能否外推到真实 grid 规模的关键边界。**
 
-`P,C ≤ SM` 意味着每个 SM 至多一个 CTA，GPU 未填满，属于**单波**。真实负载几乎总是多波的：grid 远大于 SM 数，后续波次的 CTA 要等前面的退休才能上。这两种情形下 CTA 级依赖的收益结构**可能完全不同**——多波时调度器本身就在做一部分「等待」，CTA 级机制能额外拿到的空间未知。
+P、C 与 SM 的比值只是**计划的 grid-ratio 分类**，不是常驻或波次的语义证明。特别是，`P,C ≤ SM` **不能**推出「每个 SM 至多一个 CTA」：调度器可以在一个 SM 上放多个 CTA 而让另一个 SM 暂时不放，每 SM 真实常驻上限还取决于 threads、寄存器、shared memory 与 block 上限。
 
-**单波下测到的收益空间不能外推到多波。** 只有单波数据时，§6 的判决只能读作「机制可行」，不能读作「方向值得投入」。
+真实负载的 grid 通常远大于 SM 数，后续 CTA 会因资源与调度而延后进入。这种真多波情形与较小 grid 下 CTA 级依赖的收益结构**可能完全不同**——调度器本身就在做一部分「等待」，CTA 级机制能额外拿到的空间未知。
+
+**没有 timestamp proof 的 grid 收益不能外推到真多波。** 只有 grid-ratio 覆盖而没有真多波语义证据时，§6 的判决只能读作「机制可行」，不能读作「方向值得投入」。
 
 要求的 grid 范围：
 
-| 区间 | P, C 相对 SM | 覆盖要求 |
+| 计划 grid-ratio 类别 | P, C 相对 SM | 覆盖要求 |
 |---|---|---|
-| 单波、欠填充 | `< SM` | 至少 2 个点 |
-| 单波、恰好填满 | `= SM` | 必测 |
-| 多波 | `2×SM`、`8×SM`、`32×SM` | **必测** |
+| 欠 SM 数 | `< SM` | 至少 2 个点 |
+| 等于 SM 数 | `= SM` | 必测 |
+| 多波候选 | `2×SM`、`8×SM`、`32×SM` | **必测** |
 
-**对 harness 的要求**：在生产者 CTA **非全常驻**时仍要满足 §3.1——触发时刻仍然等于真实数据就绪时刻，不能因为「后续波次的生产者还没上」就提前发布，也不能退化成 grid 级等待。这是 `.cu` 的语义要求，不是加一个命令行开关（§13）。
+**对 harness 的要求**：`2×/8×/32×SM` 只有在 `%globaltimer` trace 完整证明真多波后才可记为多波覆盖：至少一个消费者 CTA 已经开始时，仍有生产者 CTA 尚未开始；同时全部生产者的 start / end timestamp 必须完整，并证明它们最终前进并完成。在这个情形下仍要满足 §3.1：Floor 的 trigger 在 ready，Impl 的 launch trigger 可在 entry，但 ready flag 不能因为「后续生产者还没上」就提前发布，也不能退化成 grid 级等待。这是 `.cu` 的语义要求与 trace 准入条件，不是由 grid ratio 或一个命令行开关推导的标签（§13）。
 
 ---
 
@@ -306,13 +340,18 @@ Ceiling 点的语义是「依赖零成本」，实现方式是把依赖整个拿
 | **≥ 8%** | `GO` | 继续 Tier 2/3 + Tier 4 + Tier 5，跑满预算 |
 | **2 – 8%** | `LLM_ONLY` | 跳过 Tier 2/3，直接做 Tier 4 端到端，确认真实负载上还剩多少 |
 | **< 2%** | `STOP` | **停**。只跑 Tier 4 三档确认，然后收工 |
-| 任一配置未通过正确性校验 | `INVALID` | **本轮所有计时都不能用**，先修正确性 |
+| 任一配置的 correctness 或必要语义 trace proof 失败 | `INVALID` | **本轮所有计时都不能用**，先修正准入失败 |
 
 ```bash
 python3 tools/gate.py bench/results/pilot_analysis.json --json bench/results/gate.json
 ```
 
 `INVALID` 的退出码是 2，其余是 0——退出码表示「gate 是否算得出来」，不表示「是否通过」，分支要看 `verdict` 字段。
+
+manifest、计划参数覆盖或 31-repeat 统计不完整时，工具仍可给出仅供诊断的数值判决，但必须同时
+写 `plan_sweep_complete=false`；这种 provisional 判决不能开启 Tier 2/3，也不能冒充完整正式
+campaign。它与 `INVALID` 的区别是：前者缺少完整 campaign 的外推资格，后者已有配置的
+correctness / 必要语义证据失败，因而整轮 timing 都不可用。FAST smoke 正是前一种情况。
 
 **要改阈值改本节**，并在同一次改动里同步 `gate.py` 顶部的 `GO_THRESHOLD` / `STOP_THRESHOLD`，否则方法学与实际执行的代码会不一致。
 
@@ -340,7 +379,7 @@ synthetic 微基准通过 gate 只说明「**机制在所述限制下可行**」
 
 ### 7.2 · 等待位置的定价 — B2
 
-派发前门控是 `[H+]`，真机无法实现。**通过 §4.3 的 occupancy 曲线反推**「若等待不占槽位能省多少」，给出区间估计。不需要额外 GPU 时间。
+派发前门控是 `[H+]`，真机无法实现。通过 §4.3 的 occupancy 与 productive-background 配对曲线，只在假设 `resident ≤ hypothetical [H+] ≤ deferred` 的吞吐关系以及对应 e2e 单调性成立时，构造「若等待不占槽位能省多少」的条件化 scenario envelope。若硬件 bookkeeping 或更精确 admission 使单调性不成立，观测差值不是硬件保证边界。不需要额外 GPU 时间。
 
 ### 7.3 · 依赖表示编码的成本交叉点 — A3
 
@@ -433,8 +472,36 @@ CTA 级依赖 ground truth：对 **GEMM / norm / SwiGLU** 这类 tile 映射公�
 ## 9. Tier 5 — DSA 算子链（DeepSeek-V3.2 / GLM-5.x）
 
 ```bash
-cd bench/dsa && ./run_dsa_chain.sh          # FAST=1 先冒烟
+cd bench/dsa
+
+# 自研 native CTA 依赖链：先做短入场，再在全新目录跑四点正式矩阵。
+RESULTS=results_native_smoke FAST=1 PROFILE=0 ./run_dsa_chain.sh
+RESULTS=results_native_formal FAST=0 PROFILE=1 ./run_dsa_chain.sh
+
+# production component：短跑、compact 与 exact-formal 都按 row fragment 独立封存。
+EXECUTE_GPU=1 TIER5_PRODUCTION_GPU_ALLOWED=1 FAST=1 \
+  RESULTS=results_production_smoke ./run_production_tier5_fragments.sh
+# 一小时执行上限下的独立 compact-14：两模型、4K/128K、三 workload + MoE。
+EXECUTE_GPU=1 TIER5_PRODUCTION_GPU_ALLOWED=1 FAST=1 \
+  MODELS=deepseek_v32,glm5 SEQS=4096,131072 \
+  WORKLOADS=operator_chain,single_layer,indexshare_fsss \
+  WARMUP=5 REPEATS=31 MOE_TOKENS=4096 \
+  RESULTS=results_production_compact ./run_production_tier5_fragments.sh
+python3 validate_production_tier5_compact.py results_production_compact
+# 原计划的完整 exact-26 仍是另一条、更宽的 admission。
+EXECUTE_GPU=1 TIER5_PRODUCTION_GPU_ALLOWED=1 FAST=0 \
+  RESULTS=results_production_formal ./run_production_tier5_fragments.sh
 ```
+
+native 正式矩阵固定覆盖 4K/32K exact mapping 与 128K/1M
+work-complete packed proxy；报告必须分开解释这两类证据。production 有两种不得混写的
+准入范围：原计划 exact-26 只有全量重新验证后才能置
+`accepted_workload_timing=1`；用户为一小时执行上限明确授权的 compact-14 固定为
+两模型 × {4K,128K} × 三 workload，再加每模型一条 MoE，只能由独立 validator 置
+`accepted_compact_workload_timing=1`。compact 必须保持
+`accepted_workload_timing=0`、`accepted_exact26_workload_timing=0`，并明确排除
+32K/1M timing，不能冒充 exact-26。production API 不暴露 CTA-readiness 或 unordered Ceiling，因此其
+`accepted_CTA_bracket` 必须保持 0，不能从 component off/on timing 推导 CTA headroom。
 
 ### 9.1 · 单卡跑不了整模型，但注意力路径跑得了
 
@@ -497,6 +564,7 @@ python3 tools/dep_oracle.py --model qwen3.6-27b --tokens 256 --seq 2048
 ```bash
 python3 tools/make_test_fixtures.py --out /tmp/ctafix
 python3 tools/analyze_pilot.py /tmp/ctafix/pilot_matrix.log \
+        --expected /tmp/ctafix/pilot_expected_tags.txt \
         --json /tmp/ctafix/pilot_analysis.json --csv /tmp/ctafix/pilot_summary.csv
 python3 tools/gate.py          /tmp/ctafix/pilot_analysis.json
 python3 tools/analyze.py       /tmp/ctafix/summary.txt
@@ -514,7 +582,7 @@ python3 tools/llm_bracket.py   /tmp/ctafix/summary_llm.txt
 |---|---|---|
 | **真机可直接测** | A1、A3、B1、B3、C2、D1、E1 | 软件即可构造 |
 | **可用 CLC 持久化 kernel 在软件中复现后测** | B4、A4 的分布式变体 | 持久 kernel 自己做调度决策（§7.6） |
-| **只能包夹估值** | B2（派发前门控是 `[H+]`）、A4 的集中式变体 | 用 occupancy 曲线反推（§7.2） |
+| **只能条件化包夹估值** | B2（派发前门控是 `[H+]`）、A4 的集中式变体 | 用 occupancy / productive-background 配对曲线构造明示单调性假设的 scenario envelope（§7.2） |
 | **只能测上界** | C1 | 跨 kernel shared memory 所有权转移无法实现，用 fused+DSMEM 作上界 |
 | **主要靠离线分析** | A2 | oracle 依赖图对比，不需 GPU（§10.1） |
 | **无对口实验** | D2 | 依赖描述的 soundness 验证需要先有实现 |
@@ -551,14 +619,16 @@ python3 tools/llm_bracket.py   /tmp/ctafix/summary_llm.txt
 ### 13.1 驱动契约
 
 - **无人值守**：整场从单一入口跑完，中途不需要人做任何决定，包括 §6 的分支
-- **可断点续跑**：每步落一个完成标记，重跑自动跳过已完成的步骤。掉线重连后重跑必须安全
-- **fail-soft**：单步失败记入 `failures.log` 后继续，不中断整场。**唯一例外是自检失败**——机器或工具链坏掉时应当立刻退出，不要在坏掉的 harness 上烧 GPU 时间
+- **可断点续跑**：每步落一个完成标记，重跑自动跳过已完成的步骤。标记必须绑定 FAST/formal、
+  完整参数、可执行文件内容、GPU 身份/CC 与 driver；任一项变化都要保留旧 attempt 并重跑，
+  不能让同名 tag 复用异机或短跑结果。掉线重连后重跑必须安全
+- **fail-soft**：单步失败记入 `failures.log` 后继续，不中断整场。**唯一立即退出的例外是自检失败**——机器或工具链坏掉时不要在坏掉的 harness 上烧 GPU 时间；正式 strict validator 失败可继续收集下游诊断，但最终 session 必须非零并标记 `INVALID`
 - **原始数字全部落盘**：任何进入报告的数字都要能追溯到一个原始记录文件
 - **自报设备**：`device.txt` 记录实际硬件，报告引用它而不是计划里假定的型号
 
 ### 13.2 判决必须机器可读
 
-§6 的三态判决由工具计算并输出结构化结果（判决字符串 + 统计量 + 退出码），**不能要求人读表**。判决工具同时要检测覆盖边界（尤其 §5.3 的单波/多波）并把 caveat 随判决一起输出。
+§6 的三态判决由工具计算并输出结构化结果（判决字符串 + 统计量 + 退出码），**不能要求人读表**。判决工具同时要检测覆盖边界：`P,C ≤ SM` 只是 grid ratio，不能自动命名为单波；`P,C > SM` 的真多波必须用 §5.3 时间戳证明。这些 caveat 随判决一起输出。
 
 ### 13.3 schema 隔离
 
@@ -566,16 +636,20 @@ python3 tools/llm_bracket.py   /tmp/ctafix/summary_llm.txt
 
 ### 13.4 上机前必须可离线自检
 
-全部分析与判决链路要能在**没有 GPU 的机器上**用合成夹具跑通，并纳入 preflight。夹具要覆盖到判决工具，否则「判决链坏了」只能在花钱之后才发现。
+全部分析与判决链路要能在**没有 GPU 的机器上**用合成夹具跑通，并纳入 preflight。夹具要覆盖到判决工具，否则「判决链坏了」只能在花钱之后才发现。严格 validator 还必须有畸形字段、
+整数 trace 不一致与旧 schema 的负面测试；失败路径要原子替换旧 JSON 为当前 `FAIL`。
 
 ### 13.5 参数空间要覆盖计划声明的范围
 
-脚本的扫描范围以本计划各节为准。实现进度见 [`bench/README.md`](bench/README.md)；执行进度见 [`EXPERIMENT_REPORT_INDEX.md`](EXPERIMENT_REPORT_INDEX.md)。仍需新增或修改代码的：
+脚本的扫描范围以本计划各节为准。实现进度见 [`bench/README.md`](bench/README.md)；执行进度见 [`EXPERIMENT_REPORT_INDEX.md`](EXPERIMENT_REPORT_INDEX.md)。验收覆盖至少包括：
 
-| 缺口 | 要做的 |
+| 计划范围 | harness 必须覆盖的验收面 |
 |---|---|
-| §7.1 / §7.3 | 在满足 §3 的触发语义上实现协议横评与编码成本对比 |
-| §7.4 / §7.5 / §7.6 | 分别实现：CTA 级 diamond、C1 四版本、CLC 持久 kernel 调度器 |
+| §7.1 / §7.3 | 满足 §3 触发语义的协议横评；interval / bitmask / CSR 的独立 decode、精确边集合与错误 Ceiling sentinel |
+| §7.4 / §7.5 / §7.6 | CTA diamond 的分支顺序、C1 四版本的完整数据校验、CLC 持久调度的 token conservation 与策略对照 |
+| §8 | PDL-off / grid Floor / unsafe Ceiling 三档、真实模型身份、active variant、完整 decode/prefill admission 与 profiler 绑定 |
+| §9 native | 四种 mode 工作量同构、programmatic edge 的 PTX/SASS 与 trace 证明、全元素正确性、四个 context、正式 profiler sidecar |
+| §9 production | exact-26：26 个 canonical row；compact-14：仅两模型的 4K/128K 三 workload + MoE。两者都要求全 causal pair/元素覆盖、每片独占与失败原子封存及 fresh revalidation；compact 只置独立 scoped acceptance，CTA bracket 字段保持不可冒充 |
 
 §5.3 多波：`cta_dep_pilot` / `run_all.sh tier1p` 已按本节要求放开 `P,C > SM`（仍须满足 §3.1）。**真机测量**是否完成不在本表跟踪。
 

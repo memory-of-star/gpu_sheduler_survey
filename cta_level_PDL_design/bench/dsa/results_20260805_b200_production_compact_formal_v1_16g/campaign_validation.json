@@ -1,0 +1,12 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "errors": [],
+  "exact_inventory": true,
+  "formal_campaign": false,
+  "kind": "tier5_production_campaign_validation",
+  "result_sha256": "6842d85a42ca52757526f09f50fe17e94f1fd10ce18779b35b34fab9bab6da27",
+  "schema": 1,
+  "status": "PASS"
+}

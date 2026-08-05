@@ -1,0 +1,28 @@
+{
+  "accepted_timing": 0,
+  "errors": [],
+  "gpu_index": 0,
+  "kind": "gpu_exclusivity_checkpoint",
+  "lease_id": "a65b6d9f9d5529f0e226fbcc4f2df4e2eff669eebd0a6c371a706c1f54bc3176",
+  "lease_path": "/workspace/gpu_sheduler_survey/cta_level_PDL_design/bench/dsa/results_20260805_b200_production_formal_exact26_v1/rows/002_deepseek_v32.indexshare_fsss.seq4096.inprogress.QSowqC/gpu_exclusivity_lease.json",
+  "measurement_role": "gpu_exclusivity_only",
+  "nvidia_smi": "nvidia-smi",
+  "observation": {
+    "all_compute_processes": [],
+    "process_name_field": "name",
+    "query_compute_apps": "--query-compute-apps=pid,gpu_uuid,name,used_memory",
+    "query_gpu": "--query-gpu=index,uuid,name",
+    "target_compute_processes": [],
+    "target_gpu": {
+      "index": 0,
+      "name": "NVIDIA B200",
+      "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+    }
+  },
+  "observation_sha256": "1968bb46b93146c3086822122b14ba6262ebdae5ce7e0c20194471efee29a09b",
+  "observed_at": "2026-08-05T12:58:38.223201+00:00",
+  "owner_pid": 690014,
+  "phase": "production_tier5_fragment_2_deepseek_v32.indexshare_fsss.seq4096_51d299b4-b46a-47e5-9bf8-1ae557ade402_pre",
+  "schema": 1,
+  "status": "PASS"
+}

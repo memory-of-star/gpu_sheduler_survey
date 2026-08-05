@@ -1,0 +1,81 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_timing_semantics": "legacy_CTA_bracket_only",
+  "accepted_workload_timing": 0,
+  "claim_scope": "production_kernel_characterization_only",
+  "correctness_sha256": "6a704391aa2189dc4a592e40819d62d9fcc9ebfcfac623b876ac03299e9be091",
+  "execution_scope": "row_fragment",
+  "formal_bracket_status": "PARTIAL",
+  "fragment": {
+    "campaign_contract_sha256": "d4c2d9be4ee93eb8fb3cfca962900d0c2fbd6204799be729ceaa6783db480f83",
+    "campaign_fingerprint_sha256": "44f66a295049d47c42697aa37f20d3d1427efcc76e95354f6ccf13e7e21b6e74",
+    "derived_row_seed": 20263805,
+    "execution_segment_id": "51d299b4-b46a-47e5-9bf8-1ae557ade402",
+    "expected_row_count": 26,
+    "invocation_uuid": "51d299b4-b46a-47e5-9bf8-1ae557ade402",
+    "ordinal": 2,
+    "row": {
+      "model": "deepseek_v32",
+      "pdl_modes": [
+        "off",
+        "on"
+      ],
+      "row_id": "deepseek_v32.indexshare_fsss.seq4096",
+      "seq": 4096,
+      "workload": "indexshare_fsss"
+    },
+    "row_id": "deepseek_v32.indexshare_fsss.seq4096"
+  },
+  "headroom_defined": false,
+  "headroom_pct": null,
+  "kind": "tier5_production_dsa_result",
+  "manifest_sha256": "f8c59e7e374782285b8ba3b9e106418dd43e796e2edc1e2a72f54101909c619f",
+  "measurement_emitted": true,
+  "production_timing_candidate": true,
+  "sample_count": 62,
+  "samples_sha256": "3c510dbc356de6b9344becf3671d727bb06bf90973b1e248583aa044aa4197bf",
+  "schema": 1,
+  "status": "CANDIDATE",
+  "summaries": [
+    {
+      "bootstrap_95pct_ci_ms": [
+        23.066112518310547,
+        23.08016014099121
+      ],
+      "component": "four_layer_fsss_total",
+      "max_ms": 23.100479125976562,
+      "median_ms": 23.073951721191406,
+      "min_ms": 23.045024871826172,
+      "pdl_mode": "off",
+      "row_id": "deepseek_v32.indexshare_fsss.seq4096",
+      "sample_count": 31
+    },
+    {
+      "bootstrap_95pct_ci_ms": [
+        23.06163215637207,
+        23.076000213623047
+      ],
+      "component": "four_layer_fsss_total",
+      "max_ms": 23.090368270874023,
+      "median_ms": 23.06787109375,
+      "min_ms": 23.032960891723633,
+      "pdl_mode": "on",
+      "row_id": "deepseek_v32.indexshare_fsss.seq4096",
+      "sample_count": 31
+    },
+    {
+      "comparison": "pdl_on_minus_pdl_off_diagnostic",
+      "component": "four_layer_fsss_total",
+      "formal_tier5_headroom": false,
+      "paired_bootstrap_95pct_ci_ms": [
+        -0.011199951171875,
+        -0.0009593963623046875
+      ],
+      "paired_median_delta_ms": -0.00611114501953125,
+      "row_id": "deepseek_v32.indexshare_fsss.seq4096",
+      "sample_count": 31
+    }
+  ],
+  "tier5_bracket_admitted": false
+}

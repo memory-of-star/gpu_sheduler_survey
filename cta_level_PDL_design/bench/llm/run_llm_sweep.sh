@@ -1,133 +1,221 @@
 #!/usr/bin/env bash
-# run_llm_sweep.sh — Tier 4: Qwen3.6-27B end-to-end PDL bracket on a single B300/B200.
+# Formal Tier-4 Qwen3.6-27B runner.
 #
-# THE ONE NUMBER THIS PRODUCES
-# ----------------------------
-#   Ceiling - PDL_grid  =  how much headroom CTA-level dependency resolution still has
-#                          AFTER production-grade grid-level PDL has taken its share.
-# If that gap is small, the whole CTA-level direction needs re-evaluating.
+# Required:
+#   RESULTS=/persistent/new-or-resumed/tier4/root
+# Optional:
+#   MODEL=/workspace/models/Qwen3.6-27B
+#   COHORTS=decode,prefill       (or only one name)
+#   KV_OFFLOADING_SIZE=<GiB>     (native KV connector; never cpu_offload_gb)
 #
-# THREE RUNGS (see ../../EXPERIMENT_PLAN.md §8.2)
-#   PDL_off   all PDL disabled
-#   PDL_grid  current production config  <-- THE FLOOR. Not "no PDL"!
-#             TRT-LLM / vLLM / SGLang already ship grid-level PDL, so measuring against
-#             PDL-off would badly overstate the remaining opportunity.
-#   Ceiling   gdc_wait removed (results are WRONG; timing only) = dependency costs nothing
-#
-# WHY Qwen3.6-27B
-#   48 of its 64 layers are Gated DeltaNet (linear attention, recurrent, no KV cache).
-#   Chunked DeltaNet is intra-chunk parallel + inter-chunk sequential state passing, i.e. a
-#   low-degree 1-to-1 chain of length seq/chunk -- the single most favourable shape for
-#   CTA-level dependencies. The model's DOMINANT compute pattern is the thing under study.
-#   BF16 ~54 GB, so it fits one card with room to spare.
-#
-# Usage:
-#   ./run_llm_sweep.sh                 # full sweep
-#   FAST=1 ./run_llm_sweep.sh          # smoke test
-#   ENGINE=vllm ./run_llm_sweep.sh     # pick the serving stack
+# Each cohort/attempt is one persistent process with one model/worker cohort,
+# three separately lowered variants, 31 adjacent Latin-3 timing triplets per
+# point, and its own PTX/cubin/Nsight proof.  Failed attempts are preserved;
+# rerunning selects a fresh attempt directory.  A completed raw candidate with
+# an existing nsys report resumes at export/finalization without rerunning GPU.
 
-set -uo pipefail
-SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+set -euo pipefail
+shopt -s nullglob
+
 cd "$(dirname "$0")"
 
-if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
-    awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "${SELF}"
+MODEL="${MODEL:-/workspace/models/Qwen3.6-27B}"
+RESULTS="${RESULTS:-}"
+COHORTS="${COHORTS:-decode,prefill}"
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    sed -n '2,15p' "$(basename "$0")"
     exit 0
 fi
 
-MODEL="${MODEL:-Qwen/Qwen3.6-27B}"
-ENGINE="${ENGINE:-vllm}"
-RESULTS="${RESULTS:-results_llm}"
-FAST="${FAST:-0}"
-NSYS="${NSYS:-nsys}"
-mkdir -p "${RESULTS}"
-
-log()  { echo "[$(date +%H:%M:%S)] $*" | tee -a "${RESULTS}/llm.log"; }
-fail() { echo "[$(date +%H:%M:%S)] FAIL: $*" | tee -a "${RESULTS}/llm.log" \
-                                              | tee -a "${RESULTS}/failures.log"; }
-
-if [ "${FAST}" = "1" ]; then
-    BATCHES=(1 8); SEQS=(4096); REQS=16
-else
-    # BS=1 decode is the most interesting point: smallest grids, GPU not full, largest
-    # overlap headroom. vLLM's own note that PDL "never hurts in the low-batch scenario"
-    # points the same way.
-    BATCHES=(1 4 16 64); SEQS=(4096 32768 131072); REQS=64
+if [[ -z "${RESULTS}" ]]; then
+    echo "RUNNER status=blocked RESULTS must be explicit for safe resume" >&2
+    exit 3
+fi
+if [[ "${MODEL}" != /* || "${RESULTS}" != /* ]]; then
+    echo "RUNNER status=blocked MODEL and RESULTS must be absolute paths" >&2
+    exit 3
 fi
 
-# ---- the three rungs, expressed as env deltas -------------------------------------------
-# Ceiling needs gdc_wait removed. There is no supported switch for that, so it is applied by
-# patching the Triton PDL helper to a no-op (see ceiling_patch.py). That is why it is gated
-# behind CTA_PDL_ALLOW_CEILING: it produces WRONG RESULTS by construction.
-rung_env() {
-    case "$1" in
-        pdl_off)
-            echo "TRTLLM_ENABLE_PDL=0 TORCHINDUCTOR_ENABLE_PDL=0" ;;
-        pdl_grid)
-            echo "TRTLLM_ENABLE_PDL=1 TORCHINDUCTOR_ENABLE_PDL=1" ;;
-        ceiling)
-            echo "TRTLLM_ENABLE_PDL=1 TORCHINDUCTOR_ENABLE_PDL=1 CTA_PDL_CEILING=1" ;;
-    esac
-}
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
 
-run_one() {
-    local rung="$1" bs="$2" seq="$3"
-    local name="${rung}_bs${bs}_seq${seq}"
-    if [ -f "${RESULTS}/${name}.done" ]; then log "skip ${name}"; return 0; fi
-    log "run  ${name}"
+manifest_args=(--results-root "${RESULTS}" --model "${MODEL}")
+if [[ -n "${KV_OFFLOADING_SIZE:-}" ]]; then
+    manifest_args+=(--kv-offloading-size "${KV_OFFLOADING_SIZE}")
+fi
+python3 tier4_manifest.py "${manifest_args[@]}"
+MODEL_IDENTITY="${RESULTS}/model_identity.json"
 
-    local env_kv; env_kv="$(rung_env "${rung}")"
-    # shellcheck disable=SC2086
-    if env ${env_kv} \
-        VLLM_USE_FULL_CUDA_GRAPH=1 \
-        python3 bench_llm.py \
-            --model "${MODEL}" --engine "${ENGINE}" \
-            --batch "${bs}" --seq "${seq}" --requests "${REQS}" \
-            --rung "${rung}" --tag "${name}" \
-        >> "${RESULTS}/${name}.log" 2>&1
-    then
-        grep -h '^SUMMARY' "${RESULTS}/${name}.log" >> "${RESULTS}/summary_llm.txt" 2>/dev/null || true
-        touch "${RESULTS}/${name}.done"
-        log "ok   ${name}"
-    else
-        fail "${name} (see ${RESULTS}/${name}.log)"
+mkdir -p "${RESULTS}/profiles" "${RESULTS}/logs" "${RESULTS}/preflight"
+
+next_attempt_dir() {
+    local cohort="$1"
+    local base="${RESULTS}/cohorts/${cohort}"
+    if [[ ! -e "${base}" ]]; then
+        printf '%s\n' "${base}"
+        return
     fi
+    local index=2
+    while [[ -e "${base}_attempt${index}" ]]; do
+        index=$((index + 1))
+    done
+    printf '%s\n' "${base}_attempt${index}"
 }
 
-log "=== Tier 4: LLM end-to-end PDL bracket ==="
-log "model=${MODEL} engine=${ENGINE}"
-nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv \
-    > "${RESULTS}/device.txt" 2>/dev/null || true
+refresh_manifest() {
+    python3 tier4_manifest.py "${manifest_args[@]}"
+}
 
-# NOTE: full CUDA graph mode matters. vLLM only enables PDL under FULL graphs because the
-# host-side cost of PDL is a NET LOSS in prefill / piecewise modes.
-for seq in "${SEQS[@]}"; do
-    for bs in "${BATCHES[@]}"; do
-        for rung in pdl_off pdl_grid ceiling; do
-            run_one "${rung}" "${bs}" "${seq}"
-        done
-    done
-done
+finish_candidate() {
+    local cohort_dir="$1"
+    local label
+    label="$(basename "${cohort_dir}")"
+    local report="${RESULTS}/profiles/${label}.nsys-rep"
+    local sqlite="${cohort_dir}/profile.sqlite"
+    if [[ ! -f "${report}" ]]; then
+        return 4
+    fi
+    if [[ ! -f "${sqlite}" ]]; then
+        nsys export --type sqlite --force-overwrite=true \
+            --output="${sqlite}" "${report}"
+    fi
+    python3 tier4_finalize.py \
+        --results "${cohort_dir}" \
+        --nsys-sqlite "${sqlite}"
+    python3 preflight_llm.py \
+        --phase after \
+        --model "${MODEL}" \
+        --model-identity "${MODEL_IDENTITY}" \
+        --results "${cohort_dir}" \
+        --proof-root "${cohort_dir}/evidence" \
+        --json "${RESULTS}/preflight/${label}_after.json"
+    refresh_manifest
+    python3 tier4_finalize.py \
+        --results "${cohort_dir}" \
+        --verify-admission
+}
 
-# ---- one nsys capture at the headline config for kernel-level attribution ----------------
-if command -v "${NSYS}" >/dev/null 2>&1; then
-    for rung in pdl_grid ceiling; do
-        prof="${RESULTS}/nsys_${rung}"
-        if [ ! -f "${prof}.nsys-rep" ]; then
-            log "nsys capture ${rung}"
-            env $(rung_env "${rung}") VLLM_USE_FULL_CUDA_GRAPH=1 \
-                "${NSYS}" profile --cuda-graph-trace=node -o "${prof}" --force-overwrite true \
-                python3 bench_llm.py --model "${MODEL}" --engine "${ENGINE}" \
-                    --batch 1 --seq 4096 --requests 8 --rung "${rung}" --tag "nsys_${rung}" \
-                >> "${RESULTS}/nsys_${rung}.log" 2>&1 || fail "nsys ${rung}"
-            "${NSYS}" export --type sqlite -o "${prof}.sqlite" "${prof}.nsys-rep" \
-                >> "${RESULTS}/nsys_${rung}.log" 2>&1 || true
+run_cohort() {
+    local cohort="$1"
+    local candidate
+    for candidate in "${RESULTS}/cohorts/${cohort}"*; do
+        [[ -d "${candidate}" ]] || continue
+        if [[ -f "${candidate}/admission.json" ]]; then
+            if python3 tier4_finalize.py \
+                --results "${candidate}" \
+                --verify-admission; then
+                echo "RUNNER cohort=${cohort} status=resume-skip-admitted path=${candidate}"
+                return 0
+            fi
+            echo "RUNNER cohort=${cohort} status=resume-admission-rejected path=${candidate}" >&2
+            continue
+        fi
+        if [[ -f "${candidate}/raw_triplet.json" ]] && \
+           [[ ! -f "${candidate}/finalize_in_progress.json" ]] && \
+           [[ ! -f "${candidate}/finalize_failure.json" ]] && \
+           [[ ! -f "${candidate}/driver_error.json" ]] && \
+           [[ ! -f "${candidate}/warmup_output_mismatch.json" ]] && \
+           [[ ! -f "${candidate}/sample_output_mismatch.json" ]]; then
+            if finish_candidate "${candidate}"; then
+                echo "RUNNER cohort=${cohort} status=resume-finalized path=${candidate}"
+                return 0
+            else
+                local resume_status=$?
+                if [[ ${resume_status} -ne 4 ]]; then
+                    refresh_manifest
+                    return "${resume_status}"
+                fi
+            fi
         fi
     done
-else
-    log "nsys not found, skipping kernel-level capture"
-fi
 
-log "=== done ==="
-log "Next: python3 ../../tools/llm_bracket.py ${RESULTS}/summary_llm.txt"
-if [ -s "${RESULTS}/failures.log" ]; then log "FAILURES:"; cat "${RESULTS}/failures.log"; fi
+    local cohort_dir
+    cohort_dir="$(next_attempt_dir "${cohort}")"
+    local label
+    label="$(basename "${cohort_dir}")"
+    local profile_base="${RESULTS}/profiles/${label}"
+    local log="${RESULTS}/logs/${label}.log"
+
+    python3 preflight_llm.py \
+        --phase before \
+        --model "${MODEL}" \
+        --model-identity "${MODEL_IDENTITY}" \
+        --results "${cohort_dir}" \
+        --json "${RESULTS}/preflight/${label}_before.json"
+
+    local -a common=(
+        --model "${MODEL}"
+        --model-identity "${MODEL_IDENTITY}"
+        --formal-root-manifest "${RESULTS}/manifest.json"
+        --results "${cohort_dir}"
+        --repeats 31
+        --warmups 3
+        --bootstrap-samples 2000
+        --max-num-batched-tokens 16384
+        --variant-timeout 3600
+    )
+    if [[ -n "${KV_OFFLOADING_SIZE:-}" ]]; then
+        common+=(--kv-offloading-size "${KV_OFFLOADING_SIZE}" --kv-offloading-backend native)
+    fi
+
+    local -a points
+    local cohort_id gpu_mem proof_point
+    case "${cohort}" in
+        decode)
+            cohort_id="decode_bs_scan_v1"
+            gpu_mem="0.82"
+            proof_point="decode_bs1:1:64:16:decode"
+            points=(
+                --point decode_bs1:1:64:16:decode
+                --point decode_bs4:4:64:16:decode
+                --point decode_bs16:16:64:16:decode
+                --point decode_bs64:64:64:16:decode
+            )
+            ;;
+        prefill)
+            cohort_id="prefill_context_scan_v1"
+            gpu_mem="0.90"
+            proof_point="prefill_full_decode_proof:1:64:2:decode"
+            points=(
+                --point prefill_4k:1:4096:2:prefill
+                --point prefill_32k:1:32768:2:prefill
+                --point prefill_128k:1:131072:2:prefill
+            )
+            ;;
+        *)
+            echo "RUNNER status=blocked unknown cohort ${cohort}" >&2
+            return 3
+            ;;
+    esac
+
+    echo "RUNNER cohort=${cohort} status=starting path=${cohort_dir}"
+    set -o pipefail
+    nsys profile \
+        --trace=cuda,nvtx \
+        --capture-range=cudaProfilerApi \
+        --capture-range-end=stop \
+        --cuda-graph-trace=node \
+        --sample=none \
+        --cpuctxsw=none \
+        --force-overwrite=false \
+        --output="${profile_base}" \
+        python3 tier4_driver.py \
+            "${common[@]}" \
+            --cohort-id "${cohort_id}" \
+            --gpu-mem-util "${gpu_mem}" \
+            --proof-point "${proof_point}" \
+            "${points[@]}" \
+        2>&1 | tee "${log}"
+
+    finish_candidate "${cohort_dir}"
+    echo "RUNNER cohort=${cohort} status=admitted path=${cohort_dir}"
+}
+
+IFS=',' read -r -a requested_cohorts <<< "${COHORTS}"
+for cohort in "${requested_cohorts[@]}"; do
+    run_cohort "${cohort}"
+done
+
+refresh_manifest
+echo "RUNNER status=ok results=${RESULTS}"

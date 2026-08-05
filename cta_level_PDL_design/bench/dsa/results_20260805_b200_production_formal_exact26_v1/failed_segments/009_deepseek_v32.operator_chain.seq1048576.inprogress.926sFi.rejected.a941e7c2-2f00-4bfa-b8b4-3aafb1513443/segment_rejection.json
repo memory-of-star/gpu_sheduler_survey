@@ -1,0 +1,42 @@
+{
+  "accepted_CTA_bracket": 0,
+  "accepted_timing": 0,
+  "accepted_workload_timing": 0,
+  "artifacts_before_rejection": {
+    "gpu_exclusivity_lease.json": {
+      "sha256": "b3f444200f68c6c1fb27378be869aa1c7e3dd826f267a54e8415ce7d76e2964c",
+      "size_bytes": 968
+    },
+    "gpu_identity.json": {
+      "sha256": "be0f01225f2dcece446e00c5b9a1aab14ee07b88bd97413fa2af02a1eb4c2826",
+      "size_bytes": 519
+    },
+    "gpu_observations.ndjson": {
+      "sha256": "8e0bb3cc71d997a9f0c2cf1f959e7ad14efb9b01a4bc89d3b8bf04d16ce51464",
+      "size_bytes": 23332583
+    },
+    "gpu_pre.json": {
+      "sha256": "e85e6081b40d73629cc97f1509d1bb74aa0a787ba56cb02d20c07d1d7b091d99",
+      "size_bytes": 1194
+    },
+    "harness.log": {
+      "sha256": "7d47c71a03069e1c504bd2d1d2cae54dc05ba1a1047a76b29197a800ffda9546",
+      "size_bytes": 331
+    },
+    "manifest.json": {
+      "sha256": "19d994d67cc69d7a2f6de97db193f1770d483b6155bf277b75964ee439038a30",
+      "size_bytes": 52918
+    },
+    "runner.log": {
+      "sha256": "9ceb1896a94ea58e4f4dcbd629d47865ba1c6d82227fcd0b794cdf96bdf17646",
+      "size_bytes": 806
+    }
+  },
+  "invocation_uuid": "a941e7c2-2f00-4bfa-b8b4-3aafb1513443",
+  "kind": "tier5_production_fragment_segment_rejection",
+  "ordinal": 9,
+  "reason": "runner_interrupted_or_unhandled_failure_rc_130",
+  "row_id": "deepseek_v32.operator_chain.seq1048576",
+  "schema": 1,
+  "status": "REJECTED"
+}

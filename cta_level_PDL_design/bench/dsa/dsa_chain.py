@@ -1,193 +1,207 @@
 #!/usr/bin/env python3
-"""Tier 5: measure the DSA operator chain on a SINGLE GPU with real shapes.
+"""Tier-5 DSA harness admission audit (fail closed).
 
-The full models (DeepSeek-V3.2 671B, GLM-5.2 744B) do not fit one card, but the DSA
-attention path is small. This reproduces
+This file deliberately does *not* time the old PyTorch operator chain.  That chain cannot
+realise any of the dependency rungs required by EXPERIMENT_PLAN.md:
 
-    lightning indexer  ->  top-k selection  ->  sparse MLA attention
+* ``torch.cuda.synchronize`` is a host wait, not grid-level PDL;
+* deleting that host wait leaves all PyTorch kernels ordered in one CUDA stream, so it is
+  not the dependency-free Ceiling;
+* there is no CTA-granular implementation rung; and
+* Floor/Impl/Ceiling were formerly measured in different processes.
 
-at production shapes and brackets it the same way everything else is bracketed:
-
-    Floor    per-op boundaries enforced (each kernel waits for the whole predecessor grid)
-    Ceiling  boundaries removed (WRONG RESULTS, timing only) = dependency costs nothing
-
-MoE dispatch/combine is reproduced with a REDUCED expert count. The dependency SHAPE is set
-by top-k routing and is independent of the expert total, so 32 experts exercise the same
-structure as 256 at an eighth of the weights.
-
-Shapes default to GLM-5.2: hidden 6144, kv_lora_rank 512, q_lora_rank 2048,
-index_head_dim 128, index_n_heads 32, index_topk 2048.
-
-Usage:
-    python3 dsa_chain.py --seq 32768
-    python3 dsa_chain.py --seq 131072 --rung ceiling
-    python3 dsa_chain.py --moe --experts 32
+``--audit-only`` writes machine-readable semantic and allocation evidence and exits zero.
+Any request to measure exits 2 without emitting a ``SUMMARY`` timing record.  This is the
+intended fail-closed behaviour until a native harness provides real PDL launches, an
+actually unordered Ceiling, adjacent rungs, and full validation.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
-import statistics
 import sys
-import time
+from pathlib import Path
 
 
-def require_torch():
+SCHEMA = 2
+BF16_BYTES = 2
+
+
+def gib(nbytes: int) -> float:
+    return nbytes / (1 << 30)
+
+
+def dsa_allocations(args: argparse.Namespace) -> dict[str, int]:
+    """Explicit tensor sizes created by the rejected implementation.
+
+    These are not presented as an allocator peak estimate.  Each entry is the size of a
+    tensor whose shape follows directly from the former PyTorch expressions, and is enough
+    to prove that the declared 128K/1M full-sequence points cannot use that implementation.
+    """
+
+    s = args.seq
+    h = args.index_n_heads
+    d = args.index_head_dim
+    k = min(args.index_topk, s)
+    r = args.kv_lora_rank
+    qlr = args.q_lora_rank
+    return {
+        "q_lat_bf16": s * qlr * BF16_BYTES,
+        "projected_q_bf16": s * h * d * BF16_BYTES,
+        # torch.einsum("thd,sd->ths", ...)
+        "indexer_ths_bf16": s * h * s * BF16_BYTES,
+        # torch.einsum("ths,h->ts", ...)
+        "indexer_scores_bf16": s * s * BF16_BYTES,
+        "topk_indices_i64": s * k * 8,
+        # kv_lat[idx] -> (S, topk, kv_lora_rank)
+        "sparse_gather_bf16": s * k * r * BF16_BYTES,
+        "kv_lat_bf16": s * r * BF16_BYTES,
+        "attention_q_bf16": s * r * BF16_BYTES,
+    }
+
+
+def moe_allocations(args: argparse.Namespace) -> dict[str, int]:
+    e, h, inter, t = args.experts, args.hidden, args.moe_inter, args.tokens
+    return {
+        "expert_w1_bf16": e * h * inter * BF16_BYTES,
+        "expert_w2_bf16": e * inter * h * BF16_BYTES,
+        "tokens_bf16": t * h * BF16_BYTES,
+        "router_bf16": h * e * BF16_BYTES,
+    }
+
+
+def visible_device() -> dict[str, object]:
+    info: dict[str, object] = {
+        "cuda_available": False,
+        "name": None,
+        "total_memory_bytes": None,
+        "compute_capability": None,
+    }
     try:
         import torch
-        return torch
-    except ImportError:
-        print("PyTorch required for Tier 5 operator-chain measurement", file=sys.stderr)
-        sys.exit(2)
+
+        if torch.cuda.is_available():
+            prop = torch.cuda.get_device_properties(0)
+            info.update(
+                cuda_available=True,
+                name=prop.name,
+                total_memory_bytes=prop.total_memory,
+                compute_capability=f"{prop.major}.{prop.minor}",
+            )
+    except (ImportError, RuntimeError):
+        pass
+    return info
 
 
-# --------------------------------------------------------------------- DSA chain
+def build_audit(args: argparse.Namespace) -> dict[str, object]:
+    kind = "moe" if args.moe else "dsa"
+    allocations = moe_allocations(args) if args.moe else dsa_allocations(args)
+    device = visible_device()
+    total = device["total_memory_bytes"]
+    over_device = []
+    if isinstance(total, int):
+        over_device = [name for name, size in allocations.items() if size > total]
 
-def build_dsa(torch, args, dev, dtype):
-    """Allocate the tensors of one DSA attention layer at real shapes."""
-    S, H = args.seq, args.hidden
-    g = torch.Generator(device=dev).manual_seed(0)
-    t = lambda *s: torch.randn(*s, device=dev, dtype=dtype, generator=g)
+    semantic_blockers = [
+        {
+            "code": "floor_not_grid_pdl",
+            "evidence": "former Floor used torch.cuda.synchronize between ordinary same-stream ops",
+        },
+        {
+            "code": "ceiling_not_unordered",
+            "evidence": "removing host synchronization leaves CUDA stream order unchanged",
+        },
+        {
+            "code": "impl_missing",
+            "evidence": "no CTA/query-row readiness protocol exists in the PyTorch chain",
+        },
+        {
+            "code": "rungs_not_adjacent",
+            "evidence": "former --rung invocations used separate processes",
+        },
+        {
+            "code": "validation_missing",
+            "evidence": "former verified=1 was a label; no poisoned full-edge reference comparison ran",
+        },
+        {
+            "code": "statistics_incomplete",
+            "evidence": "former output had a median/min only, with 10 repeats and no confidence interval",
+        },
+    ]
+    if args.moe:
+        semantic_blockers.append(
+            {
+                "code": "moe_host_scalar_sync",
+                "evidence": "int(mask.sum()) synchronizes the host once per expert inside the timed path",
+            }
+        )
+
+    allocation_blockers = []
+    if over_device:
+        allocation_blockers.append(
+            {
+                "code": "single_tensor_exceeds_device",
+                "tensors": over_device,
+                "device_memory_bytes": total,
+            }
+        )
+
     return {
-        # indexer works off the low-rank query latent, per the reference implementation
-        "q_lat": t(S, args.q_lora_rank),
-        "wq_idx": t(args.q_lora_rank, args.index_n_heads * args.index_head_dim),
-        "k_idx": t(S, args.index_head_dim),
-        "head_w": t(args.index_n_heads),
-        # MLA latent KV cache (MQA mode: one latent shared by all query heads)
-        "kv_lat": t(S, args.kv_lora_rank),
-        "q": t(S, args.kv_lora_rank),
+        "schema": SCHEMA,
+        "tier": 5,
+        "kind": kind,
+        "tag": args.tag,
+        "status": "blocked",
+        "runnable": False,
+        "measurement_emitted": False,
+        "requested_rung": args.rung,
+        "requested_warmup": args.warmup,
+        "requested_repeats": args.iters,
+        "minimum_repeats": 31,
+        "shape": (
+            {
+                "seq": args.seq,
+                "hidden": args.hidden,
+                "kv_lora_rank": args.kv_lora_rank,
+                "q_lora_rank": args.q_lora_rank,
+                "index_head_dim": args.index_head_dim,
+                "index_n_heads": args.index_n_heads,
+                "index_topk": args.index_topk,
+            }
+            if not args.moe
+            else {
+                "tokens": args.tokens,
+                "hidden": args.hidden,
+                "experts": args.experts,
+                "topk_experts": args.topk_experts,
+                "moe_inter": args.moe_inter,
+            }
+        ),
+        "explicit_tensor_bytes": allocations,
+        "explicit_tensor_gib": {name: round(gib(size), 6) for name, size in allocations.items()},
+        "device": device,
+        "semantic_blockers": semantic_blockers,
+        "allocation_blockers": allocation_blockers,
+        "required_replacement_contract": {
+            "floor": "cudaLaunchAttributeProgrammaticStreamSerialization + device gdc wait",
+            "impl": "identity-preserving per-query/CTA readiness, if implemented",
+            "ceiling": "kernels launched without dependency/order; results deliberately unverified",
+            "validation": "poison every repeat; separate full reference comparison for Floor/Impl",
+            "statistics": "all rungs adjacent in one process, >=31 samples each, confidence intervals",
+        },
     }
 
 
-def dsa_indexer(torch, b, args):
-    """Lightning indexer: ReLU-activated low-rank scores, per-head learned weighting.
+def parse_args() -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--audit-only", action="store_true", help="emit blocking evidence and exit 0")
+    ap.add_argument("--json", help="write the audit object to this file")
+    ap.add_argument("--tag", default="dsa")
+    ap.add_argument("--rung", default="all", choices=["all", "floor", "impl", "ceiling"])
+    ap.add_argument("--iters", type=int, default=31)
+    ap.add_argument("--warmup", type=int, default=5)
 
-    Cost is O(L^2) in the sequence length, which is why the chain's share of total time
-    grows sharply with context.
-    """
-    S = args.seq
-    qi = (b["q_lat"] @ b["wq_idx"]).view(S, args.index_n_heads, args.index_head_dim)
-    # scores[t, s] = sum_h w_h * relu(q_{t,h} . k_s)
-    scores = torch.einsum("thd,sd->ths", qi, b["k_idx"])
-    scores = torch.relu(scores)
-    return torch.einsum("ths,h->ts", scores, b["head_w"])
-
-
-def dsa_topk(torch, scores, args):
-    """Fine-grained token selection: keep the top-k highest-scoring predecessors."""
-    k = min(args.index_topk, scores.shape[-1])
-    _, idx = torch.topk(scores, k, dim=-1)
-    return idx
-
-
-def dsa_sparse_attn(torch, b, idx, args):
-    """Sparse MLA over the selected latents.
-
-    NOTE the dependency structure this embodies: the gather target `kv_lat` was written by
-    EARLIER decode steps, not by topk. The only inter-kernel RAW edge here is on `idx`,
-    which is 1-to-1 per query block. See archive/dsa_dependency_analysis.md §3.2.
-    """
-    sel = b["kv_lat"][idx]                                  # (S, k, kv_lora_rank)
-    logits = torch.einsum("sd,skd->sk", b["q"], sel)
-    w = torch.softmax(logits.float(), dim=-1).to(sel.dtype)
-    return torch.einsum("sk,skd->sd", w, sel)
-
-
-def run_dsa(torch, args, dev, dtype, rung):
-    b = build_dsa(torch, args, dev, dtype)
-
-    def one_iter():
-        scores = dsa_indexer(torch, b, args)
-        if rung == "floor":
-            torch.cuda.synchronize()      # hard boundary = whole-grid wait
-        idx = dsa_topk(torch, scores, args)
-        if rung == "floor":
-            torch.cuda.synchronize()
-        return dsa_sparse_attn(torch, b, idx, args)
-
-    for _ in range(args.warmup):
-        one_iter()
-    torch.cuda.synchronize()
-
-    lat = []
-    for _ in range(args.iters):
-        t0 = time.perf_counter()
-        one_iter()
-        torch.cuda.synchronize()
-        lat.append(time.perf_counter() - t0)
-
-    # Per-stage attribution, so we can see how the indexer's O(L^2) share grows.
-    stage = {}
-    for name, fn in (
-        ("indexer", lambda: dsa_indexer(torch, b, args)),
-        ("full_chain", one_iter),
-    ):
-        ts = []
-        for _ in range(max(3, args.iters // 2)):
-            t0 = time.perf_counter()
-            fn()
-            torch.cuda.synchronize()
-            ts.append(time.perf_counter() - t0)
-        stage[name] = statistics.median(ts)
-
-    return {
-        "median_s": statistics.median(lat),
-        "min_s": min(lat),
-        "indexer_s": stage["indexer"],
-        "indexer_share": stage["indexer"] / stage["full_chain"] if stage["full_chain"] else 0.0,
-    }
-
-
-# --------------------------------------------------------------------- MoE chain
-
-def run_moe(torch, args, dev, dtype, rung):
-    """MoE dispatch/combine with a reduced expert count.
-
-    This is the one DSA-family pattern that is genuinely hostile to CTA-level dependency
-    resolution: the permute indices come from the IMMEDIATELY PRECEDING router, so the
-    structure is dynamic and no prologue inspector can precompute it.
-    """
-    T, H, E, K = args.tokens, args.hidden, args.experts, args.topk_experts
-    inter = args.moe_inter
-    g = torch.Generator(device=dev).manual_seed(0)
-    x = torch.randn(T, H, device=dev, dtype=dtype, generator=g)
-    wr = torch.randn(H, E, device=dev, dtype=dtype, generator=g)
-    w1 = torch.randn(E, H, inter, device=dev, dtype=dtype, generator=g)
-    w2 = torch.randn(E, inter, H, device=dev, dtype=dtype, generator=g)
-
-    def one_iter():
-        logits = x @ wr                                  # router
-        _, sel = torch.topk(logits, K, dim=-1)           # top-k experts per token
-        if rung == "floor":
-            torch.cuda.synchronize()
-        out = torch.zeros_like(x)
-        for e in range(E):                               # grouped GEMM per expert
-            mask = (sel == e).any(dim=-1)
-            n = int(mask.sum())
-            if n == 0:
-                continue
-            xi = x[mask]                                 # gather/permute
-            hi = torch.relu(xi @ w1[e])
-            out[mask] += hi @ w2[e]                      # scatter/unpermute
-        return out
-
-    for _ in range(args.warmup):
-        one_iter()
-    torch.cuda.synchronize()
-
-    lat = []
-    for _ in range(args.iters):
-        t0 = time.perf_counter()
-        one_iter()
-        torch.cuda.synchronize()
-        lat.append(time.perf_counter() - t0)
-    return {"median_s": statistics.median(lat), "min_s": min(lat),
-            "indexer_s": 0.0, "indexer_share": 0.0}
-
-
-def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seq", type=int, default=32768)
     ap.add_argument("--hidden", type=int, default=6144)
     ap.add_argument("--kv-lora-rank", type=int, default=512)
@@ -195,55 +209,64 @@ def main():
     ap.add_argument("--index-head-dim", type=int, default=128)
     ap.add_argument("--index-n-heads", type=int, default=32)
     ap.add_argument("--index-topk", type=int, default=2048)
-    ap.add_argument("--rung", default="floor", choices=["floor", "ceiling"])
-    ap.add_argument("--iters", type=int, default=10)
-    ap.add_argument("--warmup", type=int, default=3)
-    ap.add_argument("--tag", default="dsa")
-    ap.add_argument("--json", help="write the result as JSON")
-    # MoE mode
-    ap.add_argument("--moe", action="store_true", help="measure MoE dispatch/combine instead")
+
+    ap.add_argument("--moe", action="store_true")
     ap.add_argument("--tokens", type=int, default=4096)
-    ap.add_argument("--experts", type=int, default=32,
-                    help="REDUCED from 256; dependency shape is set by top-k, not by the total")
+    ap.add_argument("--experts", type=int, default=32)
     ap.add_argument("--topk-experts", type=int, default=8)
     ap.add_argument("--moe-inter", type=int, default=2048)
     args = ap.parse_args()
 
-    torch = require_torch()
-    if not torch.cuda.is_available():
-        print("SUMMARY tier=5 status=no_cuda", file=sys.stderr)
-        return 2
-    dev = torch.device("cuda")
-    dtype = torch.bfloat16
+    positive = {
+        name: getattr(args, name)
+        for name in (
+            "iters",
+            "seq",
+            "hidden",
+            "kv_lora_rank",
+            "q_lora_rank",
+            "index_head_dim",
+            "index_n_heads",
+            "index_topk",
+            "tokens",
+            "experts",
+            "topk_experts",
+            "moe_inter",
+        )
+    }
+    bad = [name for name, value in positive.items() if value <= 0]
+    if args.warmup < 0:
+        bad.append("warmup")
+    if bad:
+        ap.error("arguments must be positive: " + ", ".join(bad))
+    return args
 
-    name = torch.cuda.get_device_name(0)
-    print(f"[dev] {name}")
 
-    kind = "moe" if args.moe else "dsa"
-    try:
-        res = (run_moe if args.moe else run_dsa)(torch, args, dev, dtype, args.rung)
-    except RuntimeError as e:
-        # OOM at long context is an expected outcome, not a campaign-stopping failure.
-        print(f"ERROR: {e}", file=sys.stderr)
-        print(f"SUMMARY tier=5 kind={kind} tag={args.tag} rung={args.rung} status=error "
-              f"seq={args.seq}")
-        return 1
-
-    extra = (f"tokens={args.tokens} experts={args.experts} topk_experts={args.topk_experts}"
-             if args.moe else
-             f"seq={args.seq} index_topk={args.index_topk} index_n_heads={args.index_n_heads}")
-
-    print(f"SUMMARY tier=5 kind={kind} tag={args.tag} rung={args.rung} status=ok "
-          f"{extra} hidden={args.hidden} "
-          f"median_s={res['median_s']:.6f} min_s={res['min_s']:.6f} "
-          f"indexer_s={res['indexer_s']:.6f} indexer_share={res['indexer_share']:.4f} "
-          f"verified={0 if args.rung == 'ceiling' else 1}")
-
+def main() -> int:
+    args = parse_args()
+    audit = build_audit(args)
     if args.json:
-        with open(args.json, "w") as f:
-            json.dump({"args": vars(args), "result": res, "device": name}, f, indent=2)
-    return 0
+        path = Path(args.json)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(audit, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    largest_name, largest_bytes = max(
+        audit["explicit_tensor_bytes"].items(), key=lambda item: item[1]
+    )
+    print(
+        "AUDIT_DSA "
+        f"schema={SCHEMA} tier=5 kind={audit['kind']} status=blocked runnable=0 "
+        f"tag={args.tag} largest_tensor={largest_name} largest_gib={gib(largest_bytes):.6f} "
+        f"semantic_blockers={len(audit['semantic_blockers'])} "
+        f"allocation_blockers={len(audit['allocation_blockers'])}"
+    )
+    print(
+        "BLOCKED: Tier-5 timing is disabled until a native harness proves real grid PDL, "
+        "a truly unordered Ceiling, adjacent rungs, and full non-Ceiling validation.",
+        file=sys.stderr,
+    )
+    return 0 if args.audit_only else 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

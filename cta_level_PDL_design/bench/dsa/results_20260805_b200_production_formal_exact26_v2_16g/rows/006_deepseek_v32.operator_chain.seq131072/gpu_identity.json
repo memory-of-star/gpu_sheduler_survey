@@ -1,0 +1,18 @@
+{
+  "accepted_timing": 0,
+  "errors": [],
+  "gpu_index": 0,
+  "kind": "gpu_identity",
+  "measurement_role": "gpu_identity_only",
+  "nvidia_smi": "nvidia-smi",
+  "observed_at": "2026-08-05T13:59:21.403279+00:00",
+  "owner_pid": 1615514,
+  "phase": "production_tier5_fragment_6_deepseek_v32.operator_chain.seq131072_87f43854-b09c-4564-bfe8-d8b95e2a0890_identity",
+  "schema": 1,
+  "status": "PASS",
+  "target_gpu": {
+    "index": 0,
+    "name": "NVIDIA B200",
+    "uuid": "GPU-eb98326c-c1dd-1104-c4d7-24decdb06aef"
+  }
+}

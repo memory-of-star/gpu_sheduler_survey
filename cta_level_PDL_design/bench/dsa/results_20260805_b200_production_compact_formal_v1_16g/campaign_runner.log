@@ -1,0 +1,18 @@
+TIER5_CAMPAIGN_CONTRACT status=PASS rows=14 formal=0 sha256=3f3c604d9892f523bde2ccb51bad8c9808fc0d25ad4cb1a31c060964486f1029
+[2026-08-05T14:19:55Z] sealed row=deepseek_v32.operator_chain.seq4096 ordinal=0 invocation=170f7432-2747-4bde-b15b-392f1f071cb6
+[2026-08-05T14:20:07Z] sealed row=deepseek_v32.single_layer.seq4096 ordinal=1 invocation=ce4be65d-b30a-47b9-ae33-3523244b7412
+[2026-08-05T14:20:21Z] sealed row=deepseek_v32.indexshare_fsss.seq4096 ordinal=2 invocation=f4516e53-9f4a-41ab-b39d-44d1bb3bd296
+[2026-08-05T14:21:36Z] sealed row=deepseek_v32.operator_chain.seq131072 ordinal=3 invocation=f7a189cc-d254-48e9-aa00-d0d6eed8d0f4
+[2026-08-05T14:22:40Z] sealed row=deepseek_v32.single_layer.seq131072 ordinal=4 invocation=fb46b423-e039-41a4-8e15-c7a0e150a3d5
+[2026-08-05T14:24:49Z] sealed row=deepseek_v32.indexshare_fsss.seq131072 ordinal=5 invocation=7989c144-d729-4b12-919b-9f3d3fef6957
+[2026-08-05T14:25:01Z] sealed row=deepseek_v32.moe32 ordinal=6 invocation=c814c793-bdab-4a93-a17a-0ed10788e9cc
+[2026-08-05T14:25:13Z] sealed row=glm5.operator_chain.seq4096 ordinal=7 invocation=8c2fd0c5-bb25-4e1a-ae0b-d249cccaab43
+[2026-08-05T14:25:25Z] sealed row=glm5.single_layer.seq4096 ordinal=8 invocation=ec9608bc-3316-450f-a656-8c7dcc5e383e
+[2026-08-05T14:25:39Z] sealed row=glm5.indexshare_fsss.seq4096 ordinal=9 invocation=ddfd3790-28f3-4a54-9a38-5780d055af3b
+[2026-08-05T14:26:38Z] sealed row=glm5.operator_chain.seq131072 ordinal=10 invocation=f0d19521-c25f-4a61-9a6f-cce23e8e889c
+[2026-08-05T14:27:29Z] sealed row=glm5.single_layer.seq131072 ordinal=11 invocation=3224b6bb-eaee-4d89-8742-088f834f4a48
+[2026-08-05T14:29:05Z] sealed row=glm5.indexshare_fsss.seq131072 ordinal=12 invocation=ac4c2bf4-e790-4726-be35-2559cb9dbb0f
+[2026-08-05T14:29:16Z] sealed row=glm5.moe32 ordinal=13 invocation=8cedbdde-0429-4a10-b1eb-d9e0c4355761
+TIER5_CAMPAIGN_FINAL status=PASS accepted_workload_timing=0 accepted_CTA_bracket=0
+TIER5_CAMPAIGN_FINAL_CHECK status=PASS accepted_workload_timing=0
+[2026-08-05T14:29:28Z] campaign complete rows=14 fresh_check_final=PASS
