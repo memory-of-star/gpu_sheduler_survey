@@ -13,6 +13,9 @@
 // validation launch checks every exact parent flag and datum immediately after
 // each supposedly-correct wait.  The unsound global completion-counter protocol
 // is deliberately excluded.
+//
+// Grid size may exceed SM count (multi-wave, EXPERIMENT_PLAN.md §5.3). Per-CTA
+// publish-after-ready still holds when later waves are not yet resident.
 
 #include "common/bench_util.cuh"
 #include "common/dep_pattern.cuh"
@@ -258,7 +261,7 @@ int main(int argc, char** argv) {
     if (args.has("--help")) {
         printf(
             "usage: cta_dep_pilot [options]\n"
-            "  --producers N --consumers N\n"
+            "  --producers N --consumers N   (may exceed SM count; multi-wave is §5.3)\n"
             "  --structure interval|grouped|strided|self\n"
             "  --degree D --repeats N --threads N\n"
             "  --ready CYC --tail CYC --prologue CYC --epilogue CYC\n"
@@ -294,12 +297,22 @@ int main(int argc, char** argv) {
     }
 
     DeviceInfo dev = queryDevice();
-    if (cfg.nproducer > dev.sms || cfg.nconsumer > dev.sms) {
+    // Multi-wave (P,C > SM) is required by EXPERIMENT_PLAN.md §5.3. Trigger semantics
+    // already satisfy §3.1: software modes trigger at entry then publish done[cta] only
+    // after this CTA's readiness work; Floor triggers after readiness. Later producer
+    // waves cannot publish early — they have not run yet. Do not re-introduce a P,C<=SM
+    // cap here; that was the project's top measurement gap, not a correctness requirement.
+    const int grid_max = cfg.nproducer > cfg.nconsumer ? cfg.nproducer : cfg.nconsumer;
+    if (grid_max > 64 * dev.sms) {
         fprintf(stderr,
-                "pilot requires a one-CTA-per-SM grid (P,C <= %d) so every producer "
-                "CTA can trigger without launch-gate serialization\n", dev.sms);
+                "refusing producers/consumers=%d > 64*SM (%d); plan §5.3 tops out at 32*SM\n",
+                grid_max, 64 * dev.sms);
         return 2;
     }
+    const char* wave_regime = "underfilled";
+    if (grid_max > dev.sms) wave_regime = "multi";
+    else if (grid_max == dev.sms) wave_regime = "single_full";
+
     int producer_occ = ctasPerSM(pilotProducer, {0, cfg.threads});
     int consumer_occ = ctasPerSM(pilotConsumer, {0, cfg.threads});
     if (producer_occ < 2 || consumer_occ < 2) {
@@ -312,11 +325,17 @@ int main(int argc, char** argv) {
     double tightness = dep_interval_tightness(pat);
     double effdegree = dep_effective_degree(pat);
     printf("Pilot semantics=2 tag=%s structure=%s degree=%d effective_degree=%.2f "
-           "tightness=%.4f grid=%d ready=%llu tail=%llu prologue=%llu "
+           "tightness=%.4f grid=%d wave=%s ready=%llu tail=%llu prologue=%llu "
            "epilogue=%llu skew_bins=%d repeats=%d producer_occ=%d consumer_occ=%d\n",
            cfg.tag, depStructureName(cfg.structure), cfg.degree, effdegree,
-           tightness, cfg.nproducer, cfg.ready, cfg.tail, cfg.prologue,
+           tightness, cfg.nproducer, wave_regime, cfg.ready, cfg.tail, cfg.prologue,
            cfg.epilogue, cfg.skew_bins, cfg.repeats, producer_occ, consumer_occ);
+    if (grid_max > dev.sms) {
+        printf("NOTE: multi-wave grid (max(P,C)=%d > SM=%d). Later producer waves wait for "
+               "earlier ones to retire; overlap structure differs from single-wave. "
+               "Trigger/publish still per-CTA after readiness (§3.1).\n",
+               grid_max, dev.sms);
+    }
 
     PilotCtx ctx;
     CUDA_CHECK(cudaMalloc(&ctx.data, (size_t)cfg.nproducer * sizeof(float)));
@@ -371,8 +390,8 @@ int main(int argc, char** argv) {
            captured_pct, of_space_pct);
     printf("SUMMARY_PILOT semantics=2 tag=%s structure=%s degree=%d eff_degree=%.2f "
            "tightness=%.4f producers=%d consumers=%d threads=%d sms=%d "
-           "producer_occ=%d consumer_occ=%d trigger_floor=ready trigger_impl=entry "
-           "trigger_ceiling=entry "
+           "wave=%s producer_occ=%d consumer_occ=%d trigger_floor=ready "
+           "trigger_impl=entry trigger_ceiling=entry "
            "ready=%llu tail=%llu prologue=%llu epilogue=%llu skew_bins=%d "
            "repeats=%d floor_ms=%.6f ceiling_ms=%.6f interval_spin_ms=%.6f "
            "interval_backoff_ms=%.6f exact_backoff_ms=%.6f impl=%s "
@@ -380,7 +399,7 @@ int main(int argc, char** argv) {
            "of_space_pct=%.3f valid=%d\n",
            cfg.tag, depStructureName(cfg.structure), cfg.degree, effdegree,
            tightness, cfg.nproducer, cfg.nconsumer, cfg.threads, dev.sms,
-           producer_occ, consumer_occ,
+           wave_regime, producer_occ, consumer_occ,
            cfg.ready, cfg.tail, cfg.prologue, cfg.epilogue, cfg.skew_bins,
            cfg.repeats, floor_ms, ceiling_ms, med[PILOT_INTERVAL_SPIN],
            med[PILOT_INTERVAL_BACKOFF], med[PILOT_EXACT_BACKOFF],

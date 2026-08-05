@@ -8,7 +8,7 @@
 //   Tier 2.3  encoding cost          : --wait cta-exact vs cta-spin (interval over-approx cost)
 //   Tier 0.3  occupancy cost curve   : --smem-kb sweep
 //
-// FOUR-POINT BRACKET (see docs/cta_pdl_eval_plan.md §1). Each run reports:
+// FOUR-POINT BRACKET (see ../EXPERIMENT_PLAN.md §1). Each run reports:
 //   Floor    = --wait grid          (griddepcontrol.wait, whole-grid all-or-nothing)
 //   Impl     = --wait cta-*         (per-CTA software protocol)
 //   Ceiling  = --wait none          (dependency removed; RESULTS ARE WRONG, timing only)

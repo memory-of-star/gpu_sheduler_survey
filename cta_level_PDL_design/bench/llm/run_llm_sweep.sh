@@ -7,7 +7,7 @@
 #                          AFTER production-grade grid-level PDL has taken its share.
 # If that gap is small, the whole CTA-level direction needs re-evaluating.
 #
-# THREE RUNGS (see docs/cta_pdl_eval_plan.md §6.5)
+# THREE RUNGS (see ../../EXPERIMENT_PLAN.md §8.2)
 #   PDL_off   all PDL disabled
 #   PDL_grid  current production config  <-- THE FLOOR. Not "no PDL"!
 #             TRT-LLM / vLLM / SGLang already ship grid-level PDL, so measuring against

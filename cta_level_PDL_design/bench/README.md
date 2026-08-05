@@ -1,8 +1,8 @@
 # CTA 级 PDL 评估代码
 
-配套文档：[`../docs/cta_pdl_eval_plan.md`](../docs/cta_pdl_eval_plan.md)
+配套文档：[`../EXPERIMENT_PLAN.md`](../EXPERIMENT_PLAN.md)（实验计划与判读规则）、[`../AGENTS.md`](../AGENTS.md) §4（有效性铁律）
 
-**开发机与实验机分离**：这里的代码在本地写完、语法自检通过，租用 GPU 后只负责产出原始数据，分析回本地做（[`../tools/`](../tools/)）。所有驱动脚本都可**无人值守**运行、**断点续跑**、**失败不中断**。
+整场实验由 [`../run_session.sh`](../run_session.sh) 无人值守执行，分析工具在 [`../tools/`](../tools/)，可在租用机上直接跑。所有驱动脚本都可**无人值守**运行、**断点续跑**、**失败不中断**。
 
 ---
 
@@ -15,7 +15,7 @@ bench/
 │   ├── dep_pattern.cuh    原语 2a：参数化依赖模式（结构与依赖度独立可调）
 │   ├── dep_wait.cuh       原语 2b：可互换的同步协议（B1 维度的全部选项）
 │   └── bench_util.cuh     公共宿主端工具
-├── cta_dep_pilot.cu       Tier 1 收益地图（**修正后的 harness，gate 数据来源**；P,C ≤ SM）
+├── cta_dep_pilot.cu       Tier 1 收益地图（**修正后的 harness，gate 数据来源**；含多波）
 ├── cta_dep_bench.cu       旧微基准，**trigger 语义已被否决**，仅保留供复审（见「harness 状态」）
 ├── tier0_facts.cu         Tier 0 基础事实（重叠层数 / occupancy 代价 / fence 成本）
 ├── clc_probe.cu           Tier 0.4 CLC try_cancel 特性（需 sm_100+）
@@ -57,14 +57,14 @@ python3 ../tools/cta_timeline.py results/trace_*.csv
 | phase | 驱动 | 状态 |
 |---|---|---|
 | `tier0` | `tier0_facts` / `clc_probe` | 有效 |
-| `tier1p` | `cta_dep_pilot` | **有效，Tier 1 gate 的唯一合法数据源**。受 `P,C ≤ SM` 限制，只覆盖单波 |
+| `tier1p` | `cta_dep_pilot` | **有效，Tier 1 gate 的唯一合法数据源**。已支持 `P,C > SM` 多波（计划 §5.3）；上机前需在真机编译验证 |
 | `tier1` `tier23` | `cta_dep_bench` | **已否决**：它在 PDL trigger 之前就发布全部 `done[]`，等待预先满足，计时不能作为 CTA 收益证据（[`../reports/rejected/fast_campaign.md`](../reports/rejected/fast_campaign.md)）。保留仅供复审，`run_all.sh` 会先打印 WARNING |
 
 `./run_all.sh`（不带参数）**不会**跑 `tier1` / `tier23`——把决策点预算花在已知无效的数字上，正是这个驱动要避免的事。
 
 两个分析脚本不可互换：`analyze.py` 读 `SUMMARY`，`analyze_pilot.py` 读 `SAMPLE` / `SUMMARY_PILOT`。
 
-**当前最大缺口**：multi-wave（`P,C > SM`）收益地图两个二进制都产不出——`cta_dep_bench` 够得着但语义无效，放宽 pilot 的上限属于对 `.cu` 的语义改动。
+**当前最大缺口（测量）**：多波收益地图的**真机数字**尚未产出——harness/驱动已放开，需租 GPU 跑 `tier1p`（默认 grids 含 `2×/8×/32× SM`）。旧 `cta_dep_bench` 仍不可用。
 
 ---
 
@@ -79,7 +79,7 @@ CTA 时间线重建本质是**跨 SM 的事件排序**：
 | `clock64()` | SM 本地时钟计数器 | **否** |
 | `%globaltimer` | 全局纳秒计时器 | 是 |
 
-用错会得到看似合理但实际错乱的重叠关系，且**不会有任何报错**。`cta_trace.cuh` 用前者，`bench_util.cuh` 里的 `spin_cycles()` 用后者——因为那里测的是单 SM 上的持续时长，不涉及跨 SM 比较。
+用错会得到看似合理但实际错乱的重叠关系，且**不会有任何报错**。`cta_trace.cuh` 的打点用 `%globaltimer`；`bench_util.cuh` 里的 `spin_cycles()` 用 `clock64()`——因为那里测的是单 SM 上的持续时长，不涉及跨 SM 比较。
 
 ### 依赖度与结构复杂度必须独立扫描
 
@@ -93,8 +93,8 @@ CTA 时间线重建本质是**跨 SM 的事件排序**：
 ./cta_dep_pilot --producers 148 --consumers 148 --structure strided --degree 32
 ```
 
-`run_all.sh tier1p` 会把这两条轴各自扫完。pilot 只接受 `interval` / `grouped` / `strided` / `self`
-四种结构（`random` / `all` / `none` 被显式拒绝），且要求 `P,C ≤ SM`。
+`run_all.sh tier1p` 会把这两条轴各自扫完，并按设备 SM 数带上多波 grids（`2×/8×/32× SM`）。pilot 只接受 `interval` / `grouped` / `strided` / `self`
+四种结构（`random` / `all` / `none` 被显式拒绝）。可用 `PILOT_GRIDS` / `PILOT_SMS` 覆盖默认扫参。
 
 **为什么必须这样做**：BlockMaestro Fig.12 注入的是 n-组全连接，两个变量同步增长，所以它的"依赖度 > 32 收益归零"无法区分成因。而真实 LLM 负载恰恰是**高依赖度 + 规整结构**——`tools/dep_oracle.py` 的推导显示，DSA 的 indexer→topk 在 1M 上下文下依赖度 8192（阈值的 256 倍），但区间编码紧度仍是 1.0、假边率 0%。照搬那条阈值会把最常见的模式错误排除。
 
@@ -147,6 +147,7 @@ cd dsa && FAST=1 ./run_dsa_chain.sh
 
 ## 已知边界
 
+- **多波下软件等待没有前向进展保证。** `P,C > SM` 时，一个已常驻的 consumer CTA 可能在自旋等待一个还没被调度上去的 producer CTA，而等待循环里没有任何超时；`strided` 是最坏情况（child 0 的 parent 撒遍整个 producer grid）。目前只有止损手段：`STEP_TIMEOUT=<秒>` 会把单步限时，挂住记成一次 step 失败而不是卡死租用机。真正的修复是等待循环里的语义改动，尚未做
 - `clc_probe` 需要 sm_100+ 与 CUDA ≥ 12.8；在 H100 上 `build.sh` 会跳过它并继续
 - `--wait none` 的结果**不可信**（故意的），只有时间有意义
 - Tier 5 的 1M 上下文可能 OOM；驱动脚本记录失败后继续，不中断整个 campaign

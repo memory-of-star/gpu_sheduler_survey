@@ -1,7 +1,7 @@
 // tier0_facts.cu — Tier 0 base facts. Run this FIRST on B300.
 //
 // Nothing here evaluates a design option; it establishes the ground truth that every later
-// experiment's interpretation depends on. See docs/cta_pdl_eval_plan.md §3.
+// experiment's interpretation depends on. See ../EXPERIMENT_PLAN.md §4.
 //
 //   0.1  How many kernels of a same-stream chain actually overlap on B300?
 //        -> decides which B3 window-depth options are even REACHABLE on this hardware.

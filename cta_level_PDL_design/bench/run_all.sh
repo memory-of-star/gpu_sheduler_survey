@@ -15,12 +15,13 @@
 #   ./run_all.sh tier0           # one phase only
 #   FAST=1 ./run_all.sh          # smoke test: tiny sweeps, minutes not hours
 #   ./run_all.sh --fresh         # ignore previous .done markers
+#   STEP_TIMEOUT=1800 ./run_all.sh   # bound each step so a hang is a failure, not a stall
 #
 # Phases: tier0 | tier1p | tier1 | tier23 | all       ('all' = tier0 + tier1p)
 #
 # HARNESS STATUS -- read before choosing a phase:
 #   tier1p  drives cta_dep_pilot, the CORRECTED harness. This is the phase whose output
-#           may be used for the Tier 1 gate. It is capped at P,C <= SM by the pilot itself.
+#           may be used for the Tier 1 gate. Supports single-wave and multi-wave (P,C > SM).
 #   tier1   drives cta_dep_bench, whose trigger semantics were REJECTED (it publishes every
 #   tier23  done[] flag before the PDL trigger, so the waits are pre-satisfied). Its timing
 #           numbers are inadmissible as CTA-benefit evidence -- see reports/rejected/
@@ -50,6 +51,23 @@ log()  { echo "[$(date +%H:%M:%S)] $*" | tee -a "${RESULTS}/campaign.log"; }
 fail() { echo "[$(date +%H:%M:%S)] FAIL: $*" | tee -a "${RESULTS}/campaign.log" \
                                               | tee -a "${RESULTS}/failures.log"; }
 
+# STEP_TIMEOUT — seconds per benchmark invocation; 0 (the default) keeps the old behaviour.
+#
+# Fail-soft assumes a step terminates. Once P,C > SM the software wait paths have no
+# forward-progress guarantee: a consumer CTA can be resident and spinning on a producer CTA
+# belonging to a wave the scheduler has not placed yet, and no wait loop here has a timeout.
+# `strided` is the worst case, since child 0's parents span the whole producer grid. A hang
+# stalls the rented machine indefinitely, which is precisely the outcome the fail-soft
+# contract exists to prevent, so bound the step and let it be recorded as a failure instead.
+STEP_TIMEOUT="${STEP_TIMEOUT:-0}"
+run_bounded() {
+    if [ "${STEP_TIMEOUT}" != "0" ] && command -v timeout >/dev/null 2>&1; then
+        timeout --kill-after=30s "${STEP_TIMEOUT}" "$@"
+    else
+        "$@"
+    fi
+}
+
 # step <name> <command...> — run once, record completion, never abort the campaign
 #
 # The SUMMARY grep is anchored with a trailing space on purpose: cta_dep_pilot emits
@@ -60,12 +78,14 @@ step() {
     local name="$1"; shift
     if [ -f "${RESULTS}/${name}.done" ]; then log "skip ${name} (already done)"; return 0; fi
     log "run  ${name}"
-    if "$@" >> "${RESULTS}/${name}.log" 2>&1; then
+    if run_bounded "$@" >> "${RESULTS}/${name}.log" 2>&1; then
         grep -h '^SUMMARY ' "${RESULTS}/${name}.log" >> "${RESULTS}/summary.txt" 2>/dev/null || true
         touch "${RESULTS}/${name}.done"
         log "ok   ${name}"
     else
-        fail "${name} (see ${RESULTS}/${name}.log)"
+        local rc=$?
+        [ ${rc} -eq 124 ] && fail "${name} TIMED OUT after ${STEP_TIMEOUT}s" \
+                          || fail "${name} (see ${RESULTS}/${name}.log)"
     fi
 }
 
@@ -76,11 +96,13 @@ pilot_step() {
     local name="$1"; shift
     if [ -f "${RESULTS}/${name}.done" ]; then log "skip ${name} (already done)"; return 0; fi
     log "run  ${name}"
-    if "$@" >> "${RESULTS}/${name}.log" 2>&1; then
+    if run_bounded "$@" >> "${RESULTS}/${name}.log" 2>&1; then
         touch "${RESULTS}/${name}.done"
         log "ok   ${name}"
     else
-        fail "${name} (see ${RESULTS}/${name}.log)"
+        local rc=$?
+        [ ${rc} -eq 124 ] && fail "${name} TIMED OUT after ${STEP_TIMEOUT}s" \
+                          || fail "${name} (see ${RESULTS}/${name}.log)"
     fi
 }
 
@@ -112,23 +134,40 @@ else
     REPEATS=30
 fi
 
-# cta_dep_pilot rejects P,C > SM by design: every producer CTA must be resident so it can
-# trigger without launch-gate serialization. Its grids are therefore capped far below the
-# sweep above, and it also excludes the random/all/none structures. 148 is the B200/B300 SM
-# count -- on another device set PILOT_GRIDS to values <= its SM count, or those steps
-# fail-soft into failures.log.
+# cta_dep_pilot accepts P,C > SM (multi-wave). Grids are sized from the device SM
+# count unless PILOT_GRIDS is set explicitly. Plan §5.3 requires underfilled, =SM,
+# and 2x/8x/32x SM. random/all/none structures remain excluded by the pilot.
+detect_sms() {
+    if [ -n "${PILOT_SMS:-}" ]; then
+        echo "${PILOT_SMS}"
+        return
+    fi
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        local n
+        n=$(nvidia-smi --query-gpu=multiprocessor_count --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
+        if [ -n "$n" ] && [ "$n" -gt 0 ] 2>/dev/null; then
+            echo "$n"
+            return
+        fi
+    fi
+    # Fallback matches the B200/B300 campaigns so far; override with PILOT_SMS on other SKUs.
+    echo 148
+}
+PILOT_SMS_COUNT="$(detect_sms)"
 if [ "${FAST}" = "1" ]; then
     PILOT_DEGREES=(1 8)
     PILOT_STRUCTS=(interval strided)
     PILOT_REPEATS=5
-    PILOT_DEFAULT_GRIDS="64 148"
+    # underfilled + full + one multi-wave point (plumbing proof, not the science matrix)
+    PILOT_DEFAULT_GRIDS="64 ${PILOT_SMS_COUNT} $((2 * PILOT_SMS_COUNT))"
 else
     PILOT_DEGREES=(1 2 4 8 16 32 64)
     PILOT_STRUCTS=(interval grouped strided self)
     PILOT_REPEATS=31
-    PILOT_DEFAULT_GRIDS="32 64 128 148"
+    PILOT_DEFAULT_GRIDS="32 64 128 ${PILOT_SMS_COUNT} $((2 * PILOT_SMS_COUNT)) $((8 * PILOT_SMS_COUNT)) $((32 * PILOT_SMS_COUNT))"
 fi
 read -ra PILOT_GRIDS <<< "${PILOT_GRIDS:-${PILOT_DEFAULT_GRIDS}}"
+log "pilot SM count=${PILOT_SMS_COUNT}; grids=${PILOT_GRIDS[*]}"
 
 # ------------------------------------------------------------------ Tier 0: base facts (~1h)
 run_tier0() {
@@ -150,11 +189,8 @@ run_tier0() {
 # threshold cannot separate "too many edges" from "too complex a shape". LLM FFN GEMM chains
 # and DSA indexer->topk are both high degree but contiguous, and would be wrongly excluded.
 #
-# Coverage limit, stated up front because it is the project's top open gap: cta_dep_pilot
-# caps P,C at the SM count, so everything below is SINGLE-WAVE and underfilled. The
-# multi-wave (P,C > SM) regime cannot be produced by either binary today -- cta_dep_bench
-# reaches it but with rejected semantics, and lifting the pilot's cap is a semantic change
-# to the .cu, not a flag.
+# Coverage: single-wave (P,C <= SM) plus multi-wave (2x/8x/32x SM) per EXPERIMENT_PLAN.md
+# §5.3. Trigger semantics stay publish-after-ready per CTA; see cta_dep_pilot.cu header.
 run_tier1_pilot() {
     log "=== Tier 1.1p: degree axis, structure PINNED to interval, tail=0 (conservative) ==="
     for g in "${PILOT_GRIDS[@]}"; do
@@ -180,7 +216,8 @@ run_tier1_pilot() {
     for ratio in 1 2 4 8 16; do
         local tail=$((200000 * ratio))
         pilot_step "t12p_r${ratio}" ./cta_dep_pilot \
-            --producers 148 --consumers 148 --structure interval --degree 8 \
+            --producers "${PILOT_SMS_COUNT}" --consumers "${PILOT_SMS_COUNT}" \
+            --structure interval --degree 8 \
             --tail "${tail}" --prologue 200000 \
             --repeats "${PILOT_REPEATS}" --tag "t12p_r${ratio}"
     done
@@ -195,7 +232,7 @@ run_tier1_pilot() {
     done
     log "pilot matrix -> ${RESULTS}/pilot_matrix.log"
     log "analyze with tools/analyze_pilot.py (NOT analyze.py -- different schema)"
-    log "NOTE: single-wave only (P,C <= SM). The multi-wave gate number is still NOT MEASURED."
+    log "NOTE: grids=${PILOT_GRIDS[*]} (SM=${PILOT_SMS_COUNT}). Re-check gate caveat for multi-wave coverage."
 }
 
 # ------------------------------------------------------------------ Tier 1: REJECTED harness
