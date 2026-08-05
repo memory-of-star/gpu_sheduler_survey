@@ -1,0 +1,12 @@
+# known_debt.txt — deliberate, reviewed exceptions for codex/check_docs.py.
+#
+# Every line waives one violation. Adding a line is an act of judgement that shows up in a
+# diff; it is not a way to make the checker quiet. Each entry must say why, and what would
+# retire it.
+#
+# Format:
+#   link:<file relative to subtree root>:<href exactly as written>
+#   index:<report path relative to subtree root>
+#   nothold:<report path relative to subtree root>
+
+# (empty — the tree currently satisfies every checked invariant)
