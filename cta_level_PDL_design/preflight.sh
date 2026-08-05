@@ -80,9 +80,13 @@ echo "3. build (ARCH=${ARCH_GUESS})"
 if command -v nvcc >/dev/null 2>&1; then
     if ARCH="${ARCH_GUESS}" ./bench/build.sh > /tmp/preflight_build.log 2>&1; then
         ok "all benchmarks compiled"
-        for b in cta_dep_bench tier0_facts; do
+        # cta_dep_pilot is the corrected harness and the only admissible source of Tier 1
+        # gate data, so a missing pilot binary is fatal, not cosmetic.
+        for b in cta_dep_pilot tier0_facts; do
             [ -x "bench/${b}" ] && ok "  bench/${b}" || bad "  bench/${b} missing"
         done
+        [ -x bench/cta_dep_bench ] && ok "  bench/cta_dep_bench (rejected harness, re-audit only)" \
+            || warn "  bench/cta_dep_bench missing (only needed to re-audit old results)"
         if [ -x bench/clc_probe ]; then ok "  bench/clc_probe"; else
             warn "  bench/clc_probe not built (expected below sm_100)"; fi
     else
@@ -105,6 +109,17 @@ if python3 tools/make_test_fixtures.py --out /tmp/preflight_fix > /dev/null 2>&1
 else
     bad "analysis toolchain broken — fix BEFORE running experiments"
 fi
+# The gate path is what makes the session unattended: if analyze_pilot.py or gate.py is
+# broken, the run produces numbers that nothing can turn into a decision.
+if python3 tools/analyze_pilot.py /tmp/preflight_fix/pilot_matrix.log \
+        --json /tmp/preflight_fix/pilot_analysis.json \
+        --csv  /tmp/preflight_fix/pilot_summary.csv > /dev/null 2>&1 \
+   && python3 tools/gate.py /tmp/preflight_fix/pilot_analysis.json \
+        --json /tmp/preflight_fix/gate.json > /dev/null 2>&1; then
+    ok "gate path works (analyze_pilot.py -> gate.py)"
+else
+    bad "gate path broken — the session could run and still not reach a decision"
+fi
 if python3 tools/dep_oracle.py --model qwen3.6-27b --tokens 256 --seq 2048 > /dev/null 2>&1; then
     ok "dep_oracle (offline dependency derivation)"
 else
@@ -113,26 +128,17 @@ fi
 
 # ---------------------------------------------------------------- 5. LLM deps (optional)
 echo
-echo "5. LLM stack (only needed for Tier 4)"
+echo "5. LLM stack (Tier 4 only — NOT needed by run_session.sh)"
 if python3 -c "import torch" 2>/dev/null; then
     TV=$(python3 -c "import torch;print(torch.__version__)")
     ok "torch ${TV}"
     python3 -c "import torch;exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null \
-        && ok "torch sees CUDA" || bad "torch cannot see CUDA"
+        && ok "torch sees CUDA" || warn "torch cannot see CUDA (Tier 4 only)"
 else
-    warn "torch missing (Tier 4/5 unavailable; Tier 0-3 unaffected)"
+    warn "torch missing (Tier 4/5 unavailable; the gate session is unaffected)"
 fi
 python3 -c "import vllm" 2>/dev/null && ok "vllm present" \
-    || warn "vllm missing — pip install vllm before Tier 4"
-
-MODEL_DIR="${HF_HOME:-$HOME/.cache/huggingface}"
-if [ -d "${MODEL_DIR}" ]; then
-    SZ=$(du -sh "${MODEL_DIR}" 2>/dev/null | cut -f1)
-    ok "HF cache at ${MODEL_DIR} (${SZ}) — Qwen3.6-27B BF16 needs ~54GB"
-else
-    warn "no HF cache yet; start the download NOW, it is usually the slowest step:"
-    echo "         huggingface-cli download Qwen/Qwen3.6-27B &"
-fi
+    || warn "vllm missing (Tier 4 only; install it in the later session if the gate says GO)"
 
 # ---------------------------------------------------------------- 6. misc
 echo
@@ -141,12 +147,18 @@ command -v nsys >/dev/null 2>&1 && ok "nsys present" \
     || warn "nsys missing (kernel-level capture will be skipped)"
 command -v ncu  >/dev/null 2>&1 && ok "ncu present"  \
     || warn "ncu missing (per-kernel L2/DRAM metrics unavailable)"
-command -v tmux >/dev/null 2>&1 && ok "tmux present" \
-    || warn "no tmux — a dropped connection will kill the campaign"
+
+# The sibling cross-stream benchmark is Tier 0.2. run_session.sh runs it automatically, but
+# only if the whole repo was cloned rather than this subtree alone.
+if [ -d ../cross_stream_PDL_survey/bench/pdl_bench ]; then
+    ok "cross_stream_PDL_survey present (Tier 0.2 will run)"
+else
+    warn "cross_stream_PDL_survey missing — Tier 0.2 will be skipped; clone the whole repo"
+fi
 
 AVAIL=$(df -BG . | tail -1 | awk '{print $4}' | tr -d 'G')
-if [ "${AVAIL}" -lt 150 ] 2>/dev/null; then
-    warn "${AVAIL} GB free; model (54GB) + traces may not fit"
+if [ "${AVAIL}" -lt 20 ] 2>/dev/null; then
+    warn "${AVAIL} GB free; traces and logs may not fit"
 else
     ok "${AVAIL} GB free"
 fi
@@ -161,9 +173,8 @@ if [ "${FAIL}" -gt 0 ]; then
     exit 1
 fi
 echo " READY."
+[ "${WARN}" -gt 0 ] && echo " (${WARN} warnings — some tiers may be skipped)"
 echo
-echo " Next:"
-echo "   huggingface-cli download Qwen/Qwen3.6-27B &   # background, Tier 0/1 do not need it"
-echo "   cd bench && FAST=1 ./run_all.sh               # smoke test, ~5 min"
-[ "${WARN}" -gt 0 ] && echo "   (${WARN} warnings — some tiers may be skipped)"
+echo " This script is called by ./run_session.sh, which runs the whole session unattended."
+echo " Running it directly is only useful to check the machine before committing to a run."
 exit 0
